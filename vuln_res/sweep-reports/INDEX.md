@@ -58,3 +58,30 @@ One entry per sweep, ever run. Append, never rewrite history.
 - **New knowledge entries:** see [`summary.md`](./2026-11-11-001-host-independent-parsing-hardening/summary.md)'s "New knowledge" section
 - **Blocked on / escalated to human:** none — all three targeted findings fixed; §1.1/§4
   left for the user to approve a host-level tool install before attempting
+
+## 2026-11-11-002-posture-confidence-recon
+
+- **Agents run:** `vulnres-recon`'s procedure (`../plans/01-static-analysis-and-dependency-agent.md`)
+- **Environment(s):** none (static analysis + already-approved `cargo audit`/`cargo deny`,
+  no new host-level install)
+- **Targets covered:** full suite-wide re-derivation of security-relevant `.contains()`
+  flows (not just `AUDIT.md`'s two named instances — specifically checked whether the new
+  `posture_confidence` schema work, commits `a0cdd5e`/`20da5e6`, introduces a third);
+  `cargo clippy`/`cargo fmt`/`cargo test`/both CI guard scripts re-confirmed clean; a fresh
+  `cargo audit` run plus a first-ever `cargo deny check` against this repo's `Cargo.lock`
+- **Duration:** under an hour
+- **New findings:** 1 —
+  [`posture-confidence-missing-from-diff`](./2026-11-11-002-posture-confidence-recon/posture-confidence-missing-from-diff.md)
+  (score 6, **fixed in this same sweep**: `state::diff::diff` never compared the new
+  `posture_confidence` field, silently defeating the field's own stated purpose —
+  "surface unmeasured louder" — whenever a comparison's other fields happened to match;
+  one new regression test added)
+- **New knowledge entries:** 3 — build/test/clippy/fmt/guards re-confirmed clean at
+  `20da5e6`; the `.contains()` suite-wide trace confirmed no third instance and that
+  `posture_confidence` itself introduces no new text-parsing; `cargo audit` re-run clean
+  against a fresher advisory snapshot and `cargo deny check` run for the first time
+  (license-policy config gap found, not a vulnerability — see knowledge entry)
+- **Blocked on / escalated to human:** none new. `AUDIT.md` §1.1 (DER fuzz harness) still
+  needs `cargo-fuzz`, not installed, not attempted. The `cargo deny` license-policy gap
+  (missing `deny.toml`) is a recommendation, not fixed — it would live at the repo root,
+  outside this task's scoped write directories.

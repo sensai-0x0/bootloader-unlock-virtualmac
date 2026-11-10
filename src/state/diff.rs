@@ -32,6 +32,19 @@ pub fn diff(before: &BootState, after: &BootState) -> Vec<DiffEntry> {
     }
 
     compare!("environment", before.environment, after.environment);
+    // posture_confidence is the field the evaluator's own binding guardrail exists for
+    // ("honesty of state — must surface unmeasured louder",
+    // reports/evaluator/evaluator-decisions-2026-11-11.md D2). Omitting it here would let a
+    // confidence downgrade (or a baseline claiming a different confidence than a fresh read,
+    // e.g. via `verify --baseline <path>` against an externally-authored file) pass through
+    // this diff silently whenever target_container's other fields happen to still match —
+    // exactly the "silent degradation without saying so" failure mode the field was added to
+    // prevent. See vuln_res/sweep-reports/ for the finding this closes.
+    compare!(
+        "posture_confidence",
+        before.posture_confidence,
+        after.posture_confidence
+    );
     compare!(
         "target_container.security_mode",
         before.target_container.security_mode,
@@ -114,5 +127,26 @@ mod tests {
         assert!(paths.contains(&"target_container.security_mode"));
         assert!(paths.contains(&"target_container.allows_third_party_kexts"));
         assert_eq!(entries.len(), 2);
+    }
+
+    #[test]
+    fn a_posture_confidence_change_is_reported_even_when_security_mode_is_unchanged() {
+        // The gap this test closes: a baseline (e.g. an externally-authored file passed to
+        // `verify --baseline <path>`, or a legacy pre-schema baseline that defaults to
+        // Unmeasured) can claim a different posture_confidence than a fresh measurement
+        // while target_container's fields all still match. Before this fix, diff() had no
+        // comparison for posture_confidence at all, so this case produced zero diff
+        // entries — silently hiding exactly the kind of confidence downgrade the field
+        // exists to surface ("honesty of state — must surface unmeasured louder",
+        // reports/evaluator/evaluator-decisions-2026-11-11.md D2).
+        let mut a = state(SecurityMode::Full);
+        a.posture_confidence = PostureConfidence::Measured;
+        let mut b = state(SecurityMode::Full);
+        b.posture_confidence = PostureConfidence::UntrustedRead;
+
+        let entries = diff(&a, &b);
+        let paths: Vec<&str> = entries.iter().map(|e| e.path.as_str()).collect();
+        assert!(paths.contains(&"posture_confidence"));
+        assert_eq!(entries.len(), 1);
     }
 }
