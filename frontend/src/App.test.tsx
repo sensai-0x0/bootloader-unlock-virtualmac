@@ -21,4 +21,13 @@ describe("App", () => {
     expect(getByText("chains with impact proven, awaiting sign-off")).toBeDefined();
     expect(window.location.pathname).toBe("/campaign");
   });
+
+  test("the dial switches to the posture view", () => {
+    const { getByText } = render(<App />);
+
+    fireEvent.click(getByText("posture"));
+
+    expect(getByText("target container posture")).toBeDefined();
+    expect(window.location.pathname).toBe("/posture");
+  });
 });

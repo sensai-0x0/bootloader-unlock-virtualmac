@@ -58,6 +58,10 @@
   grid-template-columns: 1.8fr 1.4fr 1.6fr 1.2fr;
 }
 
+.ledger.cols-boot-objects summary {
+  grid-template-columns: 1.2fr 1fr 1.6fr;
+}
+
 .detail {
   background: var(--graphite-700);
   padding: var(--space-4) var(--space-4) var(--space-5) var(--space-4);

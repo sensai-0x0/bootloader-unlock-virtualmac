@@ -5,7 +5,7 @@ export function Ledger({
   variant,
   children,
 }: {
-  variant: "findings" | "exploits";
+  variant: "findings" | "exploits" | "boot-objects";
   children: ReactNode;
 }) {
   return <div className={`ledger cols-${variant}`}>{children}</div>;

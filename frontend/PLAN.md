@@ -176,9 +176,54 @@ browser behavior. The real work this phase did was the data-model fix, not
 the component; the component itself was close to free once the data was
 honest.
 
-## Phase 4 — posture/evidence view (next, unchanged)
+## Phase 4 — posture view (done; split further than planned)
 
-`BootState`/`PlannedTransition`/`Report` per `../design/FEATURE-PLAN.md`:
-new `PostureConfidenceTick`, `SecurityModeTick`, invariants checklist,
-carbon-copy diff row. Third dial position. Left for last because it's the
-largest net-new surface, not an extension of what exists.
+**Revised before starting:** the original Phase 4 bundled `BootState`,
+`PlannedTransition`, and `Report` into one phase — exactly the "too large
+to judge honestly before committing" mistake the Phase 0 retrospective
+already named once. Split it: this phase ships only the `BootState`
+posture ledger; `PlannedTransition`/`Report` (mode-transition rail, plan
+preview, evidence/diff viewer, invariants checklist) move to Phase 5.
+
+**Shipped:** `PostureConfidenceTick` and `SecurityModeTick` (both reuse the
+filled/outline/dash tick grammar `StatusTick` established, each with their
+own small dedicated stylesheet rather than forcing a shared component
+across incompatible types). `PostureView` — a manifest-style header
+(capture time, environment, host, confidence) plus a `boot-objects`-variant
+ledger: one row for the target container's booleans, one row per enrolled
+boot object, one per other container. Third dial position, `/posture`.
+`sampleBootState`/`sampleBootStateUnmeasured` added, shaped to
+`spec/contract-spec.md`'s actual `BootState` contract.
+
+**The enrolled-object hashes are the first genuinely truncated value in
+this app:** every earlier `Loupe` use (the severity glyph) showed the same
+information twice, compact and magnified. Here, the collapsed row
+literally cannot show a 96-character sha384 and stay a ledger; `Loupe`
+shows the first 8 characters inline and the full hash on hover/focus. This
+is the case `../design/AESTHETIC.md`'s loupe description was actually
+written for.
+
+**Verified:** `bun run typecheck` clean (after widening `Ledger`'s
+`variant` prop type — `"findings" | "exploits"` wasn't open to a third
+kind, a real gap caught by the compiler, not by inspection), `bun test` —
+40/40 pass (7 new across `SecurityModeTick`, `PostureConfidenceTick`, and
+`App.test.tsx`'s third-dial-position case), `bun run build` bundles clean
+(10.19 KB CSS), dev server smoke-tested on `/posture` via `curl`.
+
+**Judgment:** keeping `Reduced`/`Permissive`/`Unknown` visually identical
+in `SecurityModeTick` (all neutral dash, word-only distinction) was a
+direct application of the plan already written in
+`../design/FEATURE-PLAN.md` before any code existed — a rare case where
+the up-front contract mapping made the component a transcription, not a
+decision. No new judgment call needed, which is itself worth noting: the
+earlier planning work paid for itself here.
+
+## Phase 5 — plan preview + evidence/report viewer (next)
+
+`PlannedTransition` (mode-transition rail reusing `StageRule`'s mechanics
+for the `Full ↔ ReducedKexts`/`Full ↔ PermissiveCustomKernel` edges, a
+read-only plan-preview row) and `Report` (carbon-copy diff rows, the
+invariants checklist, the evidence-bundle path via the same reveal-path
+convention as a finding's PoC). Last, because it's the one surface that
+depends on both `BootState` (this phase) and the full invariants list
+existing somewhere typed (it doesn't yet).

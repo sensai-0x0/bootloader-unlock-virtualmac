@@ -63,3 +63,44 @@ export interface Exploit {
   sweepId: string;
   chainingNotes: string;
 }
+
+/**
+ * bputil-eval's own evaluator contracts (spec/contract-spec.md via
+ * ../../design/FEATURE-PLAN.md), not vuln_res/'s. Same `FindingConfidence`
+ * values, contract-spec.md's own name for the field.
+ */
+export type PostureConfidence = FindingConfidence;
+
+export type SecurityMode = "Full" | "Reduced" | "Permissive" | "Unknown";
+
+export interface TargetContainer {
+  securityMode: SecurityMode;
+  ssvEnabled: boolean;
+  allowsCustomKernel: boolean;
+  allowsThirdPartyKexts: boolean;
+}
+
+export type ObjectRole = "LLB" | "iBoot" | "KernelCache" | "AuxKC" | "CustomBootObject";
+export type Signer = "Apple" | "SEPLocalPolicy" | "Unknown";
+
+export interface EnrolledObject {
+  role: ObjectRole;
+  signer: Signer;
+  sha384: string;
+}
+
+export interface OtherContainer {
+  volumeGroupUuid: string;
+  securityMode: SecurityMode | "Unknown";
+}
+
+export interface BootState {
+  schemaVersion: number;
+  capturedAt: string;
+  environment: "MacOS" | "OneTrueRecovery";
+  postureConfidence: PostureConfidence;
+  host: { chip: string; macosBuild: string; serialMasked: string };
+  targetContainer: TargetContainer;
+  enrolledObjects: EnrolledObject[];
+  otherContainers: OtherContainer[];
+}
