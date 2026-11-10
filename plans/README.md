@@ -14,7 +14,7 @@ and what's been deliberately left as an open gap).
 | [phase-4.md](phase-4.md) | P4 Permissive path + revert + control surface — **not started** | **Human with physical access to a scratch Mac** |
 | [phase-5.md](phase-5.md) | P5 Hardening + release — **not started** | Human (needs the hardware matrix) |
 | [research-environment.md](research-environment.md) | Prep for P5's hardware-matrix coverage: simulating an M6-generation Mac from an IPSW you already have, without owning the hardware | Human (needs the IPSW file) |
-| [extension-local-model-hosting.md](extension-local-model-hosting.md) | Proposed, not started — links this project's M2-generation VM research and (gated, future) P3 work to the local-model-hosting projects elsewhere in this monorepo (`ComPILARGem3/`, `metacogna-rag/`); see `../reports/m2-bootloader-unlock-technicians-guide.md` for the companion hobbyist-facing guide | Human |
+| [extension-local-model-hosting.md](extension-local-model-hosting.md) | Proposed, not started — self-contained plan for hobbyist local-model-hosting relevance, scoped entirely to this repository; see `../reports/m2-bootloader-unlock-technicians-guide.md` for the companion hobbyist-facing guide | Human |
 
 **Why P3 onward can't just be assigned to an agent the same way P0–P2 were:** those phases
 mutate a real Mac's boot security policy, which `spec/build-spec.md`'s golden rules require
