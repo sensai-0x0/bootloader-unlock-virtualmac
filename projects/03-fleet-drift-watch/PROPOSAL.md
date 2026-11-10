@@ -60,6 +60,115 @@ expected — never silently, which would let a real drift re-baseline itself int
 4. **Rollup reporting:** lean on `vulnres-reporting`'s cadence pattern rather than
    building a second reporting mechanism from scratch.
 
+## Phases 1–2 specification (drafted 2026-11-11, per evaluator Build-next rank 2)
+
+`reports/evaluator/evaluator-decisions-2026-11-11.md` routes this project's first two
+steps through an acknowledge-flow-first spec, before any baseline format is written.
+That ordering is deliberate: the acknowledgment step is both the false-positive control
+and the project's primary attack surface, so it gets designed first.
+
+### Scheme 1 — acknowledgment flow (the part that must exist first)
+
+Rules, in order of bindingness:
+
+1. **An alert never becomes a baseline.** The diff that raised the alert is a finding,
+   not an accepted fact. Closing an alert and updating a baseline are the same human
+   action only when taken explicitly and in one direction.
+2. **An acknowledgment always requires a fresh measurement.** The runner takes a new
+   `evaluate --json` at acknowledgment time and validates the asserted change still
+   matches that fresh diff. Accepting from the alert's own evidence is prohibited — a
+   stale acknowledge would let post-alert drift through unobserved (the honesty-of-state
+   guardrail, applied to the runner, not just the tool).
+3. **Every acknowledgment carries a reason.** A free-text, owner-typed reason is stored
+   with the ack; an ack without a reason is malformed and refused. The reason is what
+   makes a fleet audit readable later ("SSV change was mine, 1TR round-trip test") and
+   what makes an attacker's silent-ack path conspicuous.
+4. **Acks are append-only and hash-chained.** Ack records are never edited or removed;
+   the chain is verifiable the same way `report.json`/`report.sha256` bundles already
+   are (`report.rs`'s format, reused — no new crypto, just the existing sha256-chaining
+   discipline).
+5. **Manual, not networked.** Acknowledgment happens on the runner by the same human who
+   would resolve the alert in a briefing; there is no remote-ack API to design, harden,
+   or accidentally expose.
+
+### Scheme 2 — baseline store format
+
+One directory per enrolled Mac under a repo-local store (no server, no database; the
+same flat-files-as-schema reasoning `vuln_res/sweep-reports/` uses):
+
+```
+drift-watch/
+  enrollments.json          ← the explicit, by-hand list; no discovery, ever
+  state/
+    <enrollment-name>/
+      baseline.json         ← last-known-good posture (the alert comparator)
+      baseline.sha256       ← chain head, verified on every run
+      acks.json             ← append-only ack log (chain-linked to baseline.json)
+      acks.sha256
+```
+
+- `enrollments.json` — array of `{ name, target, added_by, added_at, approved_by, note }`;
+  `approved_by` must be a person (the per-fleet opt-in rule at each new enrollment); the
+  runner refuses entries it can't positively validate against this file.
+- `baseline.json` — fields: `schema_version`, `enrollment_name`, `last_known_good`
+  (a `BootState` captured verbatim by a real `evaluate --json` run),
+  `source_evidence` (`report_dir`, `report_sha256`, optional `acked_at_acks_position`),
+  and `diff_source`. `last_known_good` is a real `BootState` (never a hand-typed
+  summary) so `state/diff.rs` consumes it with zero adapter code.
+- `acks.json` — array of `{ id, accepted_at, accepted_by, reason, fresh_state_captured_at,
+  fresh_evidence_ref, diff: [DiffEntry…] }`, hash-chained across files exactly like the
+  report bundles. Editing or truncating this file breaks the chain and is itself an alert.
+- The alert comparator is always: fresh `evaluate --json` vs `baseline.json`'s
+  `last_known_good`, via the existing `state::diff::diff()` — no new diffing logic exists
+  in this project, by design.
+
+### Scheme 3 — downgrade/rollback observables (rank 3, lands with rank 2)
+
+An attacker's cheapest move isn't flipping a mode — it's *reverting* to an older,
+weaker-but-known-good-looking state, or rolling the runner's own view back. The baseline
+store makes rollback visible by treating versions as first-class diff fields:
+
+1. **Every stored and fresh state carries the versions it was produced under** — the
+   tool's own `schema_version`, the baseline store's format `schema_version` (distinct
+   number; bumped whenever a field here changes), and the `evaluate` binary version that
+   captured it. These are ordinary serialized fields, so `state::diff::diff()` surfaces
+   any mismatch as a normal `DiffEntry` — no special-casing in the comparator.
+2. **A downgrade is an alert, not an ack shortcut.** A fresh run reporting an *older*
+   tool schema/binary version than the baseline's is alertable even when every posture
+   field is identical — "the same posture measured by an older tool" is exactly what a
+   rolled-back or tampered runner looks like. Acknowledging it follows the same Scheme 1
+   flow with an explicit reason; there is no auto-accept for version regressions.
+3. **Format bump discipline:** downgrading the *store format* is refusal, not alert —
+   a runner that reads a `baseline.json` with a newer store `schema_version` than it
+   understands fails closed with a clear error rather than guessing at unknown fields
+   (the same forward-compat rule the tool's own `SCHEMA_VERSION` gate already enforces
+   on bundles).
+4. **Twice-run gate re-proof:** rank 3's binding guardrail is that the P1 twice-run gate
+   still holds — the version fields are constant across two back-to-back runs on an
+   unchanged machine, so the goldens' only allowed delta remains `captured_at`. The
+   `bputil-eval` `schema_version` bump this new state-field makes is regenerated
+   deliberately, the same documented-shape-change discipline the posture-confidence
+   merge used.
+
+### Failure modes the format is designed against
+
+| Failure | Counter in the spec |
+|---|---|
+| A real drift re-baselines itself into invisibility | Rule 1 (alert ≠ baseline) + Rule 2 (fresh measure at ack) |
+| Runner's SSH key compromised → blanket-mute the fleet | Rule 3 (per-ack human reasons) + acks.json chain audit: an ack with no corresponding alert, or one blanket-ack across many Macs, is reviewable as an anomaly |
+| False positives burn the operator out | Rule 5 + a distinct ack.reason convention documented for "planned change" vs "explained change" — TODO in phase 3 once scheduling exists |
+| Baseline file tampered with directly | `baseline.sha256`/`acks.sha256` chain: a runner that fails chain verification alerts instead of comparing, and never falls back to silently rebuilding a baseline |
+
+### Exit gate for phases 1–2
+
+One enrolled test Mac: introduce a deliberate drift (flip via Apple's own `bputil`, with
+the usual human-in-1TR rules for anything mutating — see `spec/phased-plan.md`'s P3 gate),
+confirm the alert fires from a fresh `evaluate --json`, acknowledge it with a reason,
+confirm the ack lands in `acks.json` with the chain extending, re-run the comparator —
+and confirm the identical run the next day produces **no** diff and no alert without
+another acknowledgment in between. Scheduling (phase 3) does not start until this gate
+closes.
+
 ## Open risks / what needs sign-off before any code runs
 
 - **This is the closest any proposal in this portfolio comes to "remote operation at
