@@ -6,7 +6,7 @@ database is the single source of truth; this mirror is a view). Never
 edited by hand; a divergence would be a `sync_violations` row and the
 database wins every such fight.
 
-Regenerated: 2026-11-10T15:29:03Z
+Regenerated: 2026-11-10T15:30:16Z
 
 ## Initiatives
 
@@ -62,7 +62,7 @@ Regenerated: 2026-11-10T15:29:03Z
 
 | kind | rows |
 |---|---|
-| commit_event | 25 |
+| commit_event | 26 |
 | finding | 5 |
 | knowledge | 4 |
 | milestone | 10 |
@@ -128,5 +128,10 @@ Regenerated: 2026-11-10T15:29:03Z
 
 ## Contradictions (loser marked, history kept)
 
-(none detected)
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[build-test-clippy-fmt-clean-2026-11-10](./build-test-clippy-fmt-clean-2026-11-10.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#security-mode-full-contains-whole-blob] (score 9, "fixed, confirmed against real VM-captured `bputil -d` output") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[command-enum-name-collision-tool-note](./command-enum-name-collision-tool-note.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#security-mode-full-contains-whole-blob] (score 9, "fixed, confirmed against real VM-captured `bputil -d` output") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[cargo-audit-cargo-deny-not-installed](./cargo-audit-cargo-deny-not-installed.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#security-mode-full-contains-whole-blob] (score 9, "fixed, confirmed against real VM-captured `bputil -d` output") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[build-test-clippy-fmt-clean-2026-11-10](./build-test-clippy-fmt-clean-2026-11-10.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#verify-baseline-no-size-cap] (score 2, "fixed") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[command-enum-name-collision-tool-note](./command-enum-name-collision-tool-note.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#verify-baseline-no-size-cap] (score 2, "fixed") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[cargo-audit-cargo-deny-not-installed](./cargo-audit-cargo-deny-not-installed.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#verify-baseline-no-size-cap] (score 2, "fixed") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
 
