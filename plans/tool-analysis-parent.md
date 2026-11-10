@@ -2,7 +2,7 @@
 title: Evaluator pack — parent orchestrator
 source_document: archive/tool-analysis-offensive-threat-intel-defence.md (processed + archived 2026-11-11)
 role: agent (evaluator agent, per source §8)
-status: pending
+status: complete
 child_files:
   - high-offensive.md
   - threat-intel-defence.md
@@ -74,10 +74,10 @@ such and mark it "don't build as proposed"** — do not soften the guard to fit 
 
 ## 6. Completion criteria (parent)
 
-- [ ] All four child files' child-task checklists are fully checked or explicitly
+- [x] All four child files' child-task checklists are fully checked or explicitly
       blocked with a reason.
-- [ ] All four deliverables exist under `reports/evaluator/`.
-- [ ] `evaluator-decisions.md` has produced a final decision list the owner can act
+- [x] All four deliverables exist under `reports/evaluator/`.
+- [x] `evaluator-decisions.md` has produced a final decision list the owner can act
       on without code changes.
-- [ ] This parent file's `status:` frontmatter is updated to `complete` (or `blocked`
+- [x] This parent file's `status:` frontmatter is updated to `complete` (or `blocked`
       with reasons) and `plans/README.md` table rows reflect reality.
