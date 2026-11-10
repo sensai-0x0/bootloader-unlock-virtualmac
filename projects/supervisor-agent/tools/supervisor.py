@@ -558,7 +558,9 @@ def cmd_event(kind: str, detail: str, paths: str) -> None:
     """Record a described (synthetic, acceptance) event — never anything that
     executed. kind is limited to 'synthetic'; the detail must say what the
     event DESCRIBES, not what this tool did. The implication rules decide the
-    effect on the next regeneration."""
+    effect on the next regeneration. occurred_at is recorded with the local
+    UTC offset, matching parsed git event strings, so rule R1's local-date
+    granularity comparison treats synthetic events exactly like real ones."""
     if kind != "synthetic":
         print("only kind='synthetic' supported (real events come from git on parse)",
               file=sys.stderr)
@@ -570,7 +572,7 @@ def cmd_event(kind: str, detail: str, paths: str) -> None:
     cur = conn.execute(
         "INSERT INTO events(kind, occurred_at, ref, paths, detail, "
         "provenance_id, ingested_at) VALUES ('synthetic', ?, ?, ?, ?, ?, ?)",
-        (utcnow(),
+        (datetime.now().astimezone().isoformat(timespec="seconds"),
          "synthetic:" + hashlib.sha256(detail.encode()).hexdigest()[:12],
          json.dumps(path_list), detail, prov, utcnow()))
     conn.commit()

@@ -6,7 +6,7 @@ database is the single source of truth; this mirror is a view). Never
 edited by hand; a divergence would be a `sync_violations` row and the
 database wins every such fight.
 
-Regenerated: 2026-11-10T15:30:16Z
+Regenerated: 2026-11-10T16:02:44Z
 
 ## Initiatives
 
@@ -62,7 +62,7 @@ Regenerated: 2026-11-10T15:30:16Z
 
 | kind | rows |
 |---|---|
-| commit_event | 26 |
+| commit_event | 33 |
 | finding | 5 |
 | knowledge | 4 |
 | milestone | 10 |
@@ -74,8 +74,8 @@ Regenerated: 2026-11-10T15:30:16Z
 
 ## Parse health
 
-- parse_failures rows (all-time, first-class history): 2
-- parse_failures today: 2
+- parse_failures rows (all-time, first-class history): 0
+- parse_failures today: 0
 
 ## Sweep ledger (parsed)
 
@@ -114,17 +114,19 @@ Regenerated: 2026-11-10T15:30:16Z
 | environments:first-registered | never | never |
 | fleet-enrollments:first-list | never | never |
 | fuzz-targets:first-built | never | never |
-| knowledge:build-test-clean | live | never |
-| knowledge:cargo-audit-clean | live | never |
-| knowledge:command-enum-note | live | never |
-| knowledge:owner-credentials-cleared | live | never |
+| knowledge:build-test-clean | invalid | 2026-11-10 |
+| knowledge:cargo-audit-clean | invalid | 2026-11-10 |
+| knowledge:command-enum-note | invalid | 2026-11-10 |
+| knowledge:owner-credentials-cleared | invalid | 2026-11-10 |
 | vuln_res:agent-registry-fallback | invalid | 2026-11-10 |
 
 ## Implication: clock invalidations
 
-- `vuln_res:agent-registry-fallback` invalidated by 0479b5b5e7a8e347fc19ff20ee1945223f168b6a — feat: fail-closed SSV status parsing; log M6/M9 VM mutation proof; add vuln-res agent framework
-- `vuln_res:agent-registry-fallback` invalidated by 65a2736689510d56d9538646d7ea737b9adb00df — docs: root-cause the vulnres-* agent-registry gap and document a working fallback
+- `knowledge:build-test-clean` invalidated by b8e2e60631a63cae30d341aee1c0b3e5a2e1fbb3 — fix: make security-mode parsing host-independent; harden verify and CI guards
+- `knowledge:owner-credentials-cleared` invalidated by b8e2e60631a63cae30d341aee1c0b3e5a2e1fbb3 — fix: make security-mode parsing host-independent; harden verify and CI guards
+- `knowledge:command-enum-note` invalidated by b8e2e60631a63cae30d341aee1c0b3e5a2e1fbb3 — fix: make security-mode parsing host-independent; harden verify and CI guards
 - `vuln_res:agent-registry-fallback` invalidated by 86ce5fa96b0a2579e39f4ca50f1be6b0744f88c0 — feat: add vulnres-pattern-analysis and vulnres-reporting skills, exploits-index.md
+- `knowledge:cargo-audit-clean` invalidated by synthetic:fe4911a49faf — DESCRIBED, never executed: a simulated merge commit that changes Cargo.lock — R1's §4.1 example dependency-lock invalidator — to demonstrate live-clock invalidation on regeneration
 
 ## Contradictions (loser marked, history kept)
 
