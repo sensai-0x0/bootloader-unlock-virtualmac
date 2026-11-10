@@ -539,6 +539,31 @@ here rather than silently resolved in code — every entry cites the phase that 
    pre-`vuln_res/` VM-boot SSH/tart history. Quoting the user's record verbatim is
    the spec (§1 "markdown remains the human interface"); flagging it would make
    the audit fail on honest fusion.
+10. *(phase 2, 2026-11-11)* **Snapshot-first means snapshot-complete.** The
+   snapshot-first rule (item 1 applied to fresh rebuilds: a fresh DB takes its
+   ledger from the snapshot without replaying migrations) failed its first
+   honest test — `audit_runs` (migration 0001) was missing from `schema.sql`,
+   so a rebuild produced a ledger claiming `0001` applied with no table to
+   show for it. Rebuilt the state DB from the corrected snapshot; the rule is
+   "the snapshot must contain every migration's DDL", re-verified after every
+   migration by rebuilding a scratch DB and diffing `.tables`.
+11. *(phase 2, 2026-11-11)* **R1 invalidation granularity = local date.**
+   §4.1's "event postdates the claim" was underspecified against the data: git
+   event strings carry their own UTC offset, while claim anchors are date-only
+   local strings. Under raw string comparison a same-day commit that *created*
+   the asserted claim invalidates it — a false positive, since the anchor
+   describes exactly that day's state. Rule R1 v2 (`r1-event-invalidates-clock.sql`)
+   compares at local-date granularity (an anchor `2026-11-10` survives events
+   dated `2026-11-10` in any offset; strict later days invalidate) and falls
+   back to `claim_anchors.asserted_at` when `last_verified_at` is NULL — its
+   own comment had promised that join. Content-level same-day contradictions
+   stay R2's job; R2's verdicts were unaffected.
+12. *(phase 2, 2026-11-11)* **Synthetic events use the git timestamp format.**
+   `event synthetic` writes `occurred_at` with the local UTC offset
+   (`+HH:MM`), matching parsed git strings, so R1's local-date comparison
+   treats described events exactly like real ones — the acceptance
+   demonstration (Cargo.lock ⇒ `cargo-audit-clean` flips) fires on the same
+   rule path a real commit would, with no special-casing in SQL.
 
 ---
 

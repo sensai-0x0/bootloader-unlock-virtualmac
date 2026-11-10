@@ -53,6 +53,15 @@ CREATE TABLE IF NOT EXISTS decision_log (
     detail    TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS audit_runs (
+    id                 INTEGER PRIMARY KEY,
+    run_id             INTEGER NULL REFERENCES runs(id),
+    checklist_version  TEXT NOT NULL,
+    passed             INTEGER NOT NULL,
+    violations         TEXT NOT NULL,   -- JSON list; empty list = clean pass
+    at                 TEXT NOT NULL
+);
+
 
 -- ────────────────────────────────────────────────────────────────────────
 -- phase 1 (cumulative snapshot continuation — matches migration 0002)
