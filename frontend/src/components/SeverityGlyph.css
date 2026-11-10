@@ -1,0 +1,16 @@
+.severity {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.severity span {
+  width: 7px;
+  height: 7px;
+  background: var(--hairline-strong);
+  display: inline-block;
+}
+
+.severity span[data-lit] {
+  background: var(--signal-green);
+}

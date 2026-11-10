@@ -1,0 +1,37 @@
+.headline {
+  background: var(--graphite-800);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  position: relative;
+}
+
+/* Atmospheric texture — reserved for the campaign-overview view only. */
+.headline.waveform::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    100deg,
+    rgba(74, 222, 156, 0.035) 0px,
+    rgba(74, 222, 156, 0.035) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+}
+
+.headline .figure {
+  font-family: var(--font-data);
+  font-size: var(--text-headline);
+  color: var(--paper-white);
+  line-height: 1;
+  font-weight: 500;
+}
+
+.headline .label {
+  margin-top: var(--space-1);
+  font-size: var(--text-label);
+  color: var(--paper-white-dim);
+}

@@ -1,0 +1,22 @@
+.stage-rule {
+  display: flex;
+  margin-bottom: var(--space-5);
+}
+
+.stage-rule .stage {
+  flex: 1;
+  text-align: center;
+  padding-top: var(--space-2);
+  border-top: 2px solid var(--hairline);
+  font-size: var(--text-micro);
+  color: var(--paper-white-dim);
+}
+
+.stage-rule .stage.active {
+  border-top-color: var(--signal-green);
+  color: var(--signal-green);
+}
+
+.stage-rule .stage + .stage {
+  margin-left: var(--space-1);
+}

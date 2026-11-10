@@ -1,0 +1,43 @@
+.confidence-text {
+  position: relative;
+  display: inline;
+}
+
+/* Confidence is rendered as texture, not just a word
+   (../../design/AESTHETIC.md, "signal noise as honesty") — a measured
+   value (the default, no wrapper at all) stays crisp; anything less
+   degrades visibly before you've read a single label. */
+
+.confidence-text[data-confidence="untrusted-read"] {
+  color: var(--paper-white-dim);
+  filter: blur(0.2px);
+  opacity: 0.88;
+}
+
+.confidence-text[data-confidence="unmeasured"] {
+  color: var(--hairline-strong);
+  filter: blur(0.4px);
+  opacity: 0.7;
+}
+
+.confidence-text[data-confidence="untrusted-read"]::after,
+.confidence-text[data-confidence="unmeasured"]::after {
+  content: "";
+  position: absolute;
+  inset: -1px -2px;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+      0deg,
+      rgba(174, 180, 176, 0.06) 0px,
+      rgba(174, 180, 176, 0.06) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(174, 180, 176, 0.06) 0px,
+      rgba(174, 180, 176, 0.06) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+}
