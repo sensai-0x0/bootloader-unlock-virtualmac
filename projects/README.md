@@ -22,16 +22,17 @@ sign-off for anything that executes code, touches a live target, or runs on a sc
 **Every file here is a proposal for the user to approve — nothing in this folder is wired
 into `.claude/agents/` or scheduled to run.** That's a deliberate, separate decision.
 
-## The six proposals
+## The seven proposals
 
 | # | Name | Kind | One-line pitch | Effort | Impact | Risk | Builds on |
 |---|---|---|---|---|---|---|---|
 | 1 | [Continuous Fuzz Bug Hunter](./01-continuous-fuzz-bug-hunter/PROPOSAL.md) | Project | Turn the already-designed, never-run `vuln_res/` fuzzing pipeline into a real scheduled cadence against this repo's own parsers. | M | M | M | `vulnres-fuzz-harness`, `-environment-runner`, `-triage`, `-disclosure` (built, unrun) |
 | 2 | [Gated Mutation Engine](./02-gated-mutation-engine/PROPOSAL.md) | Project | Build the still-stubbed `authorize`/`execute`/`verify.assert_invariants` (P3) now that the VM round-trip proved the mechanism, keeping the human in the loop for exactly the one step the golden rules reserve for them. | L | L | L | `spec/contract-spec.md`, M8–M10 evidence, `plan.rs` |
 | 3 | [Fleet Boot-State Drift Watch](./03-fleet-drift-watch/PROPOSAL.md) | Project | Schedule the already-proven read-only `evaluate`/`verify` across N owned, enrolled Macs to catch boot-security drift fleet-wide. | M | M | M | `evaluate`/`verify`/`state/diff.rs` (P1/P2, done) |
-| 4 | [Boot-Security Attestation Bundle](./products/01-attestation-bundle/PROPOSAL.md) | Product | Package the existing hash-chained evidence bundle into a signed, independently-verifiable compliance artifact for MDM-managed fleets. | S–M | M | S | `report.rs`, `evidence/vm-sec-research-25D125/` |
-| 5 | [Vulnerability-Triage-as-a-Service](./products/02-triage-as-a-service/PROPOSAL.md) | Product | Offer the proven recon+triage scoring pipeline (already found and fixed a real bug in this repo) to other owners of Rust/parser-heavy codebases. | M | M | M | `vulnres-recon`, `vulnres-triage` scoring rubric |
-| 6 | [Boot-Security Copilot](./products/03-boot-security-copilot/PROPOSAL.md) | Product | Package the existing CLI + the already-written hobbyist guide into a guided, plain-English onboarding product. | S | S–M | S | CLI (P0–P2), `reports/m2-bootloader-unlock-technicians-guide.md` |
+| 4 | [Agentic Serving Layer](./04-agentic-serving-layer/PROPOSAL.md) | Project | Serve the bootloader tool and the vulnerability researcher over a persistent HTTP/WebSocket session API, as two hard-separated tracks, with no new mutation surface. | M | M | S | `src/wrapper.rs`, `vuln_res/knowledge/environments/SCHEMA.md`, `supervisor-agent` (Phase 1 implemented) |
+| 5 | [Boot-Security Attestation Bundle](./products/01-attestation-bundle/PROPOSAL.md) | Product | Package the existing hash-chained evidence bundle into a signed, independently-verifiable compliance artifact for MDM-managed fleets. | S–M | M | S | `report.rs`, `evidence/vm-sec-research-25D125/` |
+| 6 | [Vulnerability-Triage-as-a-Service](./products/02-triage-as-a-service/PROPOSAL.md) | Product | Offer the proven recon+triage scoring pipeline (already found and fixed a real bug in this repo) to other owners of Rust/parser-heavy codebases. | M | M | M | `vulnres-recon`, `vulnres-triage` scoring rubric |
+| 7 | [Boot-Security Copilot](./products/03-boot-security-copilot/PROPOSAL.md) | Product | Package the existing CLI + the already-written hobbyist guide into a guided, plain-English onboarding product. | S | S–M | S | CLI (P0–P2), `reports/m2-bootloader-unlock-technicians-guide.md` |
 
 Effort/Impact/Risk are S(mall)/M(edium)/L(arge), relative to each other, not absolute
 estimates.

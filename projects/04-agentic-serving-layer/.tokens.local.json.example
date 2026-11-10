@@ -1,0 +1,14 @@
+{
+  "sk-local-dev-bootloader-1": {
+    "principal": "local-dev",
+    "allowed_tracks": ["bootloader"]
+  },
+  "sk-local-dev-vulnres-1": {
+    "principal": "local-dev",
+    "allowed_tracks": ["vuln-research"]
+  },
+  "sk-local-dev-both-1": {
+    "principal": "local-dev",
+    "allowed_tracks": ["bootloader", "vuln-research"]
+  }
+}
