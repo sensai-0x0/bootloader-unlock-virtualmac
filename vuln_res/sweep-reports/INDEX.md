@@ -85,3 +85,26 @@ One entry per sweep, ever run. Append, never rewrite history.
   needs `cargo-fuzz`, not installed, not attempted. The `cargo deny` license-policy gap
   (missing `deny.toml`) is a recommendation, not fixed — it would live at the repo root,
   outside this task's scoped write directories.
+
+## 2026-11-11-003-license-policy-and-1tr-detection-gap
+
+- **Agents run:** none (run directly by the coordinating session)
+- **Environment(s):** none (config + static analysis, no sandbox needed)
+- **Targets covered:** the two items left open at the end of sweep 002 — the `cargo deny`
+  license-policy gap (this time at the repo root, in scope) and `env.rs:72`'s fallback
+  1TR-detection check
+- **Duration:** under an hour
+- **New findings:** 1 open, 1 fixed —
+  [`env-1tr-fallback-detection-confirmed-broken`](./2026-11-11-003-license-policy-and-1tr-detection-gap/env-1tr-fallback-detection-confirmed-broken.md)
+  (escalated from AUDIT.md §2's "speculative" framing to **confirmed**, against this
+  project's own real `_VM_VIRTUALIZED` fixtures — the assumed "one true recoveryOS"
+  string never occurs, even in a confirmed-paired-1TR capture; **deliberately not fixed
+  with a guessed replacement string**, per this project's "confirmed, not guessed"
+  discipline — documented, test-covered, and left open pending real research) and the
+  `cargo-deny` license-policy gap (**fixed** — `deny.toml` added at the repo root with an
+  explicit, evidence-derived allow-list)
+- **New knowledge entries:** see [`summary.md`](./2026-11-11-003-license-policy-and-1tr-detection-gap/summary.md)
+- **Blocked on / escalated to human:** the 1TR fallback-detection gap needs real research
+  (producing and capturing a confirmed *unpaired* fallback-recovery environment to find an
+  actual distinguishing signal) — not something this sweep could resolve by writing more
+  code. `AUDIT.md` §1.1 (DER fuzz harness) still needs `cargo-fuzz`, still not attempted.

@@ -1,0 +1,21 @@
+# cargo-deny configuration (https://embarkstudios.github.io/cargo-deny/).
+#
+# `advisories`/`bans`/`sources` all pass under cargo-deny's own built-in defaults — no
+# config needed for those. This file exists only to close the one real gap a vuln_res
+# recon sweep found (vuln_res/sweep-reports/2026-11-11-002-posture-confidence-recon):
+# `cargo deny check`'s default license policy allow-lists nothing, so it rejects every
+# crate in this project's own dependency tree even though none of them carry a
+# surprising or copyleft license. Not a vulnerability finding — a missing policy file.
+#
+# The three licenses below are the complete set across this tree, confirmed via
+# `cargo metadata`'s own `license` field for every package (not guessed): every
+# dependency resolves to some combination of MIT and/or Apache-2.0, except
+# `unicode-ident`, whose SPDX expression is `(MIT OR Apache-2.0) AND Unicode-3.0` — the
+# `AND` means Unicode-3.0 must be explicitly allowed too, not just implied by MIT/Apache-2.0
+# being acceptable elsewhere in the same expression.
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Unicode-3.0",
+]
