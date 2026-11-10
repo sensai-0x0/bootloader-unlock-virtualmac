@@ -54,6 +54,49 @@ pub enum CollectError {
     Invalid(#[from] BootStateError),
 }
 
+/// Outcome of the `sudo -n bputil -d` attempt inside one `collect()` pass — the raw
+/// material for posture-confidence derivation (see [`derive_posture_confidence`]).
+enum BputilOutcome {
+    /// The tool ran as root and its output fed the mode parser.
+    RootReadParsed,
+    /// The tool ran as root but its output could not be interpreted (non-zero exit, or
+    /// unrecognised wording — e.g. a future macOS build's renamed states).
+    RootReadUnparsed,
+    /// No authoritative read happened at all (no cached sudo credential, wrapper
+    /// failure). Deliberately not an error at this layer — see the module doc comment.
+    NoRootRead,
+}
+
+/// Honest, fresh-every-call mapping from the `bputil -d` attempt plus the parsed mode
+/// onto [`PostureConfidence`] (`reports/evaluator/evaluator-decisions-2026-11-11.md`'s
+/// "confidence must be derived fresh per measurement, never persisted"). Never derived
+/// from anything but this call's own outcome:
+///
+/// - root read **and** a recognised mode → `Measured`;
+/// - root read but the parser failed to recognise the mode → `UntrustedRead`
+///   (authoritative bytes exist; we failed to interpret them);
+/// - no root read → `UntrustedRead` — the `csrutil authenticated-root` SSV read is still
+///   a direct, successful measurement this pass (it does not need root), so the posture
+///   has *some* trustworthy signal, but the mode hole in `security_mode: Unknown` is
+///   exactly what `UntrustedRead`'s enum doc marks: meaningful direction, no precision.
+///
+/// `Unmeasured` stays the serde/deserialisation default for states that predate the
+/// field, and never describes a completed `collect()` pass, which always performs at
+/// least the direct SSV read.
+fn derive_posture_confidence(
+    bputil_outcome: BputilOutcome,
+    security_mode: SecurityMode,
+) -> PostureConfidence {
+    match bputil_outcome {
+        BputilOutcome::RootReadParsed if security_mode != SecurityMode::Unknown => {
+            PostureConfidence::Measured
+        }
+        BputilOutcome::RootReadParsed
+        | BputilOutcome::RootReadUnparsed
+        | BputilOutcome::NoRootRead => PostureConfidence::UntrustedRead,
+    }
+}
+
 /// Collect a [`BootState`] for the given target volume (currently always the root volume;
 /// multi-volume target selection is a P2+ concern). Never mutates. `s1 == s0` for any two
 /// calls in a row, modulo `captured_at` — the P1 exit-gate "read-only proof" in
@@ -94,6 +137,15 @@ pub fn collect() -> Result<BootState, CollectError> {
         Ok(r) if r.exit_code == 0 => parse_security_mode(&r.stdout),
         _ => SecurityMode::Unknown,
     };
+    // The parse above may itself have hit unrecognised even-after-a-successful-root-read
+    // wording; if so it holds Unknown through an Ok(exit 0) read. Both halves of what the
+    // derivation needs live in this match, so it is computed right here, fresh:
+    let bputil_outcome = match &bputil_record {
+        Ok(r) if r.exit_code == 0 => BputilOutcome::RootReadParsed,
+        Ok(_) => BputilOutcome::RootReadUnparsed,
+        Err(_) => BputilOutcome::NoRootRead,
+    };
+    let posture_confidence = derive_posture_confidence(bputil_outcome, security_mode);
     if let Ok(r) = &bputil_record {
         record(&mut raw_outputs, r);
     }
@@ -108,10 +160,10 @@ pub fn collect() -> Result<BootState, CollectError> {
         schema_version: SCHEMA_VERSION,
         captured_at: now_rfc3339(),
         environment,
-        // Phase-1 follow-up wiring: until `collect` derives it from its own
-        // measurement paths, every state ships Unmeasured — conservative, never
-        // overclaiming (`PostureConfidence` doc, state/mod.rs).
-        posture_confidence: PostureConfidence::Unmeasured,
+        // Derived fresh from this pass's own `bputil -d` outcome + parsed mode (see
+        // `derive_posture_confidence`) — never cached, never a persisted flag
+        // (evaluator decision: "confidence must be derived fresh per measurement").
+        posture_confidence,
         host: Host {
             chip: host_info.chip,
             macos_build: host_info.macos_build,
@@ -404,6 +456,50 @@ mod tests {
         assert_eq!(
             parse_security_mode("garbage output from an unsupported build"),
             SecurityMode::Unknown
+        );
+    }
+
+    // Posture-confidence derivation wiring (evaluator "Build next" rank 1, second half):
+    // the mapping from this pass's own `bputil -d` outcome onto PostureConfidence.
+
+    #[test]
+    fn root_read_with_recognised_mode_is_measured() {
+        for mode in [
+            SecurityMode::Full,
+            SecurityMode::Reduced,
+            SecurityMode::Permissive,
+        ] {
+            assert_eq!(
+                derive_posture_confidence(BputilOutcome::RootReadParsed, mode),
+                PostureConfidence::Measured
+            );
+        }
+    }
+
+    #[test]
+    fn root_read_with_unrecognised_mode_is_untrusted_read() {
+        // Exit 0 from the tool, but the parser degraded to Unknown (unrecognised future
+        // wording): authoritative bytes exist, they were not understood. Exactly the
+        // "meaningful direction, no precision" case UntrustedRead marks.
+        assert_eq!(
+            derive_posture_confidence(BputilOutcome::RootReadParsed, SecurityMode::Unknown),
+            PostureConfidence::UntrustedRead
+        );
+    }
+
+    #[test]
+    fn native_tool_exit_without_root_read_is_untrusted_read_not_unmeasured() {
+        // No authoritative `bputil -d` read this pass — but `csrutil
+        // authenticated-root status` always succeeded by this point (collect would have
+        // errored otherwise), so the pass is not Unmeasured: it has a direct, partial
+        // signal with a hole where the mode should be. UntrustedRead says exactly that.
+        assert_eq!(
+            derive_posture_confidence(BputilOutcome::NoRootRead, SecurityMode::Unknown),
+            PostureConfidence::UntrustedRead
+        );
+        assert_eq!(
+            derive_posture_confidence(BputilOutcome::RootReadUnparsed, SecurityMode::Unknown),
+            PostureConfidence::UntrustedRead
         );
     }
 

@@ -48,9 +48,13 @@ pub enum ObjectRole {
 /// saying so. The honesty rule the decision attaches: the field must make *unmeasured*
 /// louder, not quieter.
 ///
-/// Not yet derived by `state::collect` — the wiring is phase-1's next follow-up. Until
-/// then the serde default below makes every legacy `schema_version` 1 baseline
-/// deserialise to the most conservative variant, so nothing overclaims confidence.
+/// Derived by `state::collect` fresh on every call from its own `bputil -d` outcome
+/// (`state/collect.rs::derive_posture_confidence`). The serde default below makes every
+/// legacy `schema_version` 1 baseline deserialise to the most conservative variant, so
+/// pre-schema states never upgrade their own confidence claim. `Unmeasured` is therefore
+/// the pre-calibration floor, not a state a live `collect()` pass reports — see the
+/// derivation function's doc for how a pass with no root read still earns
+/// `UntrustedRead` via the direct `csrutil` SSV read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PostureConfidence {
     /// `security_mode` and the derived booleans were measured directly from Apple tool
@@ -153,6 +157,10 @@ pub enum BootStateError {
     CustomBootObjectWrongSigner,
     #[error("other_containers entry `{0}` shares the target container's volume_group_uuid")]
     OtherContainerNotDisjoint(String),
+    #[error(
+        "posture_confidence is Measured but security_mode is Unknown — a contradiction, not a clamp"
+    )]
+    MeasuredPostureWithUnknownMode,
 }
 
 /// `ValidBootState(s)` from `spec/contract-spec.md`: every field constraint, plus internal
@@ -184,6 +192,14 @@ pub fn validate(state: &BootState) -> Result<(), BootStateError> {
     let tc = &state.target_container;
     if tc.security_mode == SecurityMode::Unknown && state.environment != Environment::MacOs {
         return Err(BootStateError::UnknownModeOutsideMacOs);
+    }
+    // The coherence rule the PostureConfidence field exists for (reject-not-clamp): a
+    // claim of Measured over an Unknown mode is a self-contradictory measurement — an
+    // error, per the same discipline as every other inconsistent reading above.
+    if state.posture_confidence == PostureConfidence::Measured
+        && tc.security_mode == SecurityMode::Unknown
+    {
+        return Err(BootStateError::MeasuredPostureWithUnknownMode);
     }
     if tc.security_mode == SecurityMode::Permissive && tc.ssv_enabled {
         return Err(BootStateError::PermissiveWithSsvEnabled);
@@ -308,6 +324,24 @@ mod tests {
     }
 
     #[test]
+    fn measured_posture_with_unknown_mode_is_rejected_not_clamped() {
+        // Coherence rule for the new field: claiming a fully-measured ambience over an
+        // Unknown security_mode is a self-contradictory reading — reject-not-clamp,
+        // same discipline as every other consistency rule above.
+        let mut s = valid_full_state();
+        s.target_container.security_mode = SecurityMode::Unknown;
+        // s.posture_confidence is Measured from the helper.
+        assert_eq!(
+            validate(&s),
+            Err(BootStateError::MeasuredPostureWithUnknownMode)
+        );
+        // The same Unknown mode with an honest lesser confidence is fine — degradation
+        // itself is not an error (宇 contract-spec's Unknown-under-MacOs allowance).
+        s.posture_confidence = PostureConfidence::UntrustedRead;
+        assert!(validate(&s).is_ok());
+    }
+
+    #[test]
     fn permissive_with_ssv_enabled_is_rejected() {
         let mut s = valid_full_state();
         s.target_container.security_mode = SecurityMode::Permissive;
@@ -337,6 +371,11 @@ mod tests {
     fn unknown_mode_in_macos_is_allowed() {
         let mut s = valid_full_state();
         s.target_container.security_mode = SecurityMode::Unknown;
+        // An Unknown mode can't coexist with a Measured confidence claim
+        // (MeasuredPostureWithUnknownMode, exercised directly below) — this test is about
+        // Unknown itself being allowed under MacOs, so it pairs it with the honest
+        // confidence level a real Unknown reading would actually carry.
+        s.posture_confidence = PostureConfidence::UntrustedRead;
         assert!(validate(&s).is_ok());
     }
 
