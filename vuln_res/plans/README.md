@@ -89,6 +89,7 @@ Build in order — each plan's "exit gate" is a prerequisite for the next, same 
 the root project's own phased delivery.
 
 | [`07-ttp-informed-research-posture.md`](./07-ttp-informed-research-posture.md) | How leading vuln-research teams' actual practices get adopted (and where they don't), with citations | all above |
+| [`08-offensive-capability-triage.md`](./08-offensive-capability-triage.md) | Web-verified H/M/L triage of capability improvements + tool-integration lanes (image / MCP / CI) for the suite; explicitly out-of-scope items restated | 07 |
 
 ## Implementation status
 
