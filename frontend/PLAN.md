@@ -146,16 +146,37 @@ anything the word itself doesn't already say. Worth a real color (not just
 an opacity drop) before `unmeasured` ever appears in real data, rather than
 assuming "it's supposed to look hard to read" excuses it.
 
-## Phase 3 — scrub timeline (next)
+## Phase 3 — scrub timeline (done)
 
-Replaces the static sweep-history `Rail` rows with a draggable control.
-Saved for last because it's the most complex interaction (drag math,
-re-rendering the ledger against historical sweep data that doesn't fully
-exist as sample data yet — only `currentSweep` has full finding detail
-today; `sweepHistory` is just id+count). Needs its own sample-data pass
-before the component makes sense.
+**Shipped:** `ScrubTimeline`, built on a native `<input type="range">`
+rather than hand-rolled pointer-drag math — full keyboard and touch support
+for free, heavily restyled so it doesn't look like a default slider. Tick
+labels underneath are a pointer-only shortcut layered on top of the
+already-fully-accessible range input, not the sole way to operate it.
+Required a real data-model fix first: `sampleSweep.ts`'s two historical
+sweeps only had an `id` + a `fixedCount` scalar, which can't drive a real
+ledger view. Gave both sweeps actual `Finding[]` — and in doing so, caught
+and fixed a second ported-from-the-static-mockup inconsistency: the old
+mockup's `currentSweep` included a finding (`ssv-enabled-contains-whole-blob`)
+whose own id prefix (`2026-11-10-001/...`) said it was discovered in an
+*earlier* sweep, not the current one. Moved it to where it actually
+belongs. `sweeps` is now the single array both the trace and the scrubber
+read, chronological, no more `.reverse()` needed anywhere.
 
-## Phase 4 — posture/evidence view
+**Verified:** `bun run typecheck` clean, `bun test` — 36/36 pass (4 new:
+`ScrubTimeline.test.tsx` — range bounds, drag reports the new index, tick
+click jumps directly, exactly one tick marked active), `bun run build`
+bundles clean (9.0 KB CSS).
+
+**Judgment:** choosing a native range input over hand-rolled drag math was
+the right call for the same reason `Legend`'s checkboxes and `Ledger`'s
+`<details>` were — every one of this app's "custom" interactions is a
+native control wearing different clothes, not a reimplementation of
+browser behavior. The real work this phase did was the data-model fix, not
+the component; the component itself was close to free once the data was
+honest.
+
+## Phase 4 — posture/evidence view (next, unchanged)
 
 `BootState`/`PlannedTransition`/`Report` per `../design/FEATURE-PLAN.md`:
 new `PostureConfidenceTick`, `SecurityModeTick`, invariants checklist,

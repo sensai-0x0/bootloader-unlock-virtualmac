@@ -53,11 +53,6 @@ export interface Sweep {
   findings: Finding[];
 }
 
-export interface SweepHistoryEntry {
-  sweepId: string;
-  fixedCount: number;
-}
-
 export interface Exploit {
   id: string;
   title: string;

@@ -1,0 +1,71 @@
+.scrub {
+  margin: 0 0 var(--space-5);
+}
+
+.scrub input[type="range"] {
+  width: 100%;
+  display: block;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+.scrub input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--hairline);
+}
+
+.scrub input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 9px;
+  height: 9px;
+  margin-top: -3.5px;
+  background: var(--signal-green);
+  cursor: ew-resize;
+}
+
+.scrub input[type="range"]::-moz-range-track {
+  height: 2px;
+  background: var(--hairline);
+}
+
+.scrub input[type="range"]::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border: none;
+  background: var(--signal-green);
+  cursor: ew-resize;
+}
+
+.scrub-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  font-size: var(--text-micro);
+  color: var(--paper-white-dim);
+  gap: var(--space-2);
+}
+
+.scrub-ticks .tick-label {
+  cursor: pointer;
+  text-align: center;
+  flex: 1;
+}
+
+.scrub-ticks .tick-label:first-child {
+  text-align: left;
+}
+
+.scrub-ticks .tick-label:last-child {
+  text-align: right;
+}
+
+.scrub-ticks .tick-label:hover {
+  color: var(--paper-white);
+}
+
+.scrub-ticks .tick-label[data-active="true"] {
+  color: var(--signal-green);
+}

@@ -6,20 +6,21 @@ import { Legend } from "../components/Legend";
 import { ManifestHeader } from "../components/ManifestHeader";
 import { PhosphorTrace } from "../components/PhosphorTrace";
 import { Rail } from "../components/Rail";
+import { ScrubTimeline } from "../components/ScrubTimeline";
 import { SeverityGlyph } from "../components/SeverityGlyph";
 import { StatusTick } from "../components/StatusTick";
-import { currentSweep, knowledgeEntriesRecorded, sweepHistory } from "../data/sampleSweep";
+import { knowledgeEntriesRecorded, sweeps } from "../data/sampleSweep";
 import type { FindingStatus } from "../data/types";
 import { filterByStatus } from "../lib/filter";
 
-// Oldest first, left to right — sweepHistory itself is newest-first (for the
-// rail list below), so this view reverses it for the trace.
-const traceValues = [...sweepHistory].reverse().map((h) => h.fixedCount).concat(
-  currentSweep.findings.length,
-);
+const traceValues = sweeps.map((sweep) => sweep.findings.length);
 
 export function SweepFindingsView() {
   const [activeStatuses, setActiveStatuses] = useState<FindingStatus[]>([]);
+  // sweeps is a non-empty literal array, so the last index is always valid —
+  // defaults to the latest sweep.
+  const [selectedIndex, setSelectedIndex] = useState(sweeps.length - 1);
+  const selectedSweep = sweeps[selectedIndex] ?? sweeps[sweeps.length - 1]!;
 
   const toggleStatus = (status: FindingStatus) => {
     setActiveStatuses((prev) =>
@@ -27,13 +28,15 @@ export function SweepFindingsView() {
     );
   };
 
-  const visibleFindings = filterByStatus(currentSweep.findings, activeStatuses);
+  const visibleFindings = filterByStatus(selectedSweep.findings, activeStatuses);
+  const fixedThisSweep = selectedSweep.findings.filter((f) => f.status === "fixed").length;
 
   return (
     <>
-      <Headline figure={currentSweep.findings.length} label="findings opened this sweep" />
+      <Headline figure={selectedSweep.findings.length} label="findings opened this sweep" />
       <PhosphorTrace values={traceValues} label="findings per sweep, most recent sweep at the right" />
-      <ManifestHeader sweep={currentSweep} />
+      <ScrubTimeline sweeps={sweeps} selectedIndex={selectedIndex} onChange={setSelectedIndex} />
+      <ManifestHeader sweep={selectedSweep} />
       <Legend active={activeStatuses} onToggle={toggleStatus} />
       <Ledger variant="findings">
         {visibleFindings.map((finding) => (
@@ -65,10 +68,7 @@ export function SweepFindingsView() {
       </Ledger>
       <Rail
         rows={[
-          ["sweep history", "findings"],
-          ...sweepHistory.map(
-            (entry): [string, string] => [entry.sweepId, `${entry.fixedCount} fixed`],
-          ),
+          ["fixed, this sweep", String(fixedThisSweep)],
           ["knowledge entries recorded", String(knowledgeEntriesRecorded)],
         ]}
       />
