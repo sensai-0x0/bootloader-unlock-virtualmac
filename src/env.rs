@@ -6,16 +6,39 @@
 //! overridable by a flag or environment variable (same doc, same section).
 //!
 //! Detection note (no companion architecture doc is present in this repo to specify the
-//! exact mechanism, so this is a researched best-effort, not an invented guess — see
-//! `CLAUDE.md`): `bputil -d` prints an "OS Type" line reading "one true recoveryOS" when
-//! paired, or "ordinary recovery OS" in fallback recovery. Fallback recovery lacks Startup
-//! Security Utility and is deliberately NOT treated as mutation-eligible here, even though
-//! `spec/contract-spec.md`'s two-variant `Environment` enum doesn't name it: a state this
-//! module can't positively confirm as `OneTrueRecovery` must fail closed, per golden rule 1
-//! in `spec/build-spec.md` ("let a mutation proceed on an unknown environment" is the one
-//! thing `env` must never do). This mechanism should be validated against real 1TR hardware
-//! before P3 ships — a MacRumors forum report cited in research for this module suggests
-//! `bputil -d`'s OS Type string has not been 100% consistent across OS builds.
+//! exact mechanism, so this was originally a researched best-effort, not an invented guess
+//! — see `CLAUDE.md`): the fallback branch below was written expecting `bputil -d` to
+//! print an "OS Type" line reading "one true recoveryOS" when paired, or "ordinary
+//! recovery OS" in fallback recovery.
+//!
+//! **Confirmed wrong, not just speculative (`progress/milestones.md`'s 2026-11-10 M10
+//! entry; `vuln_res/sweep-reports/` for the finding this was escalated from):** against
+//! real `bputil` v0.1.14, the "OS Type" line reads `"macOS (overriden)"` in every captured
+//! state this project has ever measured — including inside a confirmed, paired 1TR-
+//! equivalent recovery environment (verified independently via `whoami == root` and the
+//! absence of `Finder.app`; see `tests/fixtures/bputil_d_permissive_VM_VIRTUALIZED.txt`,
+//! captured from exactly that environment). It never once reads "one true recoveryOS". The
+//! fallback branch below therefore cannot currently succeed at all: whenever
+//! `finder_app_present()` is false, `detect()` always returns
+//! `Err(UnconfirmedRecoveryVariant)`, meaning [`is_mutation_allowed`] is always `false` —
+//! even inside genuine, owner-present 1TR.
+//!
+//! This fails closed (the safe direction — golden rule 1 in `spec/build-spec.md`: never let
+//! a mutation proceed on an unknown environment), so nothing here is a security hole. But it
+//! is a confirmed functional gap: as written, this module can never actually authorize a P3
+//! mutation, on any real hardware or VM, regardless of who's present or how legitimate the
+//! request is. **Deliberately not "fixed" by substituting a new guessed string** — this
+//! project's own discipline (see every other parsing fix in `vuln_res/sweep-reports/`) is
+//! "confirmed, not guessed," and no alternative distinguishing text has been confirmed yet.
+//! What *is* confirmed working is the `finder_app_present()` primary check and the
+//! `whoami`/`Finder.app` combination as an *independent* recovery-environment signal — but
+//! that combination doesn't by itself distinguish paired 1TR from ordinary fallback
+//! recovery, which was the fallback branch's whole job. Resolving this for real needs
+//! either the still-missing companion architecture document, or deliberate research inside
+//! a VM to capture what "OS Type" (or some other field) actually reads in a confirmed
+//! *fallback* (non-paired) recovery environment, to find a real distinguishing signal
+//! rather than inventing one. Blocks P3's `authorize`/`execute` from ever succeeding until
+//! resolved — tracked as an escalated finding, not a silent gap.
 
 use crate::wrapper::{self, WrapperError};
 use serde::{Deserialize, Serialize};
@@ -51,8 +74,10 @@ pub fn detect() -> Result<Environment, EnvError> {
         return Ok(Environment::MacOs);
     }
 
-    // No Finder.app => some minimal (Recovery/Installer-like) runtime. Apple's own tool is
-    // the most direct signal for which kind, per `bputil`'s documented "OS Type" field.
+    // No Finder.app => some minimal (Recovery/Installer-like) runtime. The fallback check
+    // below is confirmed non-functional against real `bputil` v0.1.14 output — see this
+    // module's doc comment for the evidence. Kept as written (rather than guessing a
+    // replacement) because it still fails closed, which is the safe direction.
     let record = wrapper::run(&["bputil", "-d"])?;
     if record.exit_code != 0 {
         return Err(EnvError::UnconfirmedRecoveryVariant {
@@ -69,13 +94,20 @@ pub fn detect() -> Result<Environment, EnvError> {
         .find(|line| line.contains("OS Type"))
         .unwrap_or("");
 
-    if os_type_line.to_lowercase().contains("one true recoveryos") {
+    if is_one_true_recovery_os_type_line(os_type_line) {
         Ok(Environment::OneTrueRecovery)
     } else {
         Err(EnvError::UnconfirmedRecoveryVariant {
             detail: os_type_line.to_string(),
         })
     }
+}
+
+/// The fallback-recovery-classification check, pulled out as a pure function so its
+/// (currently confirmed non-functional — see this module's doc comment) behavior is
+/// directly testable against real captured text, not just asserted in prose.
+fn is_one_true_recovery_os_type_line(os_type_line: &str) -> bool {
+    os_type_line.to_lowercase().contains("one true recoveryos")
 }
 
 /// True only if the live environment is confirmed `OneTrueRecovery`. Any detection failure,
@@ -132,5 +164,32 @@ mod tests {
         if finder_app_present() {
             assert_eq!(detect().unwrap(), Environment::MacOs);
         }
+    }
+
+    // Confirmed-gap coverage (this module's doc comment; vuln_res/sweep-reports/). The
+    // assertion below documents *current, confirmed-real* behavior, not desired behavior —
+    // if this test ever starts failing because someone introduces a working distinguishing
+    // signal, that's progress, and the doc comment above (and the corresponding vuln_res
+    // finding) should be updated to say the gap is closed, not this test "fixed" back.
+    #[test]
+    fn real_os_type_line_from_a_confirmed_paired_1tr_environment_does_not_match() {
+        // tests/fixtures/bputil_d_permissive_VM_VIRTUALIZED.txt was captured from a VM
+        // environment independently confirmed to be paired 1TR recovery — via `whoami`
+        // returning `root` with no login prompt, and the absence of
+        // `/System/Library/CoreServices/Finder.app` — not inferred from this very check.
+        // Its "OS Type" line nonetheless reads "macOS (overriden)", not "one true
+        // recoveryOS": the fallback branch's assumed distinguishing string does not occur
+        // here, even in the one case it most needs to.
+        let fixture = include_str!("../tests/fixtures/bputil_d_permissive_VM_VIRTUALIZED.txt");
+        let os_type_line = fixture
+            .lines()
+            .find(|line| line.contains("OS Type"))
+            .expect("fixture has an OS Type line");
+        assert!(
+            !is_one_true_recovery_os_type_line(os_type_line),
+            "if this now returns true, the confirmed-gap finding is stale — update the \
+             module doc comment and vuln_res finding instead of leaving this assertion as \
+             a silently-passing coincidence"
+        );
     }
 }
