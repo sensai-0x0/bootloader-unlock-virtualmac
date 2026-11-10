@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vuln_res — campaign overview</title>
+  <meta name="description" content="Atmospheric overview of exploit-dev chains in flight — illustrative sample data, not a live feed." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@400;600&family=Fragment+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+
+  <!-- Sample data only — see design/README.md. This view is the deliberately
+       more atmospheric of the two; it is not meant to track vuln_res/'s exact
+       on-disk schema the way view 1 does. -->
+
+  <nav class="dial" aria-label="view">
+    <a href="view-1-sweep-findings.html">sweep &amp; findings</a>
+    <a href="view-2-campaign-overview.html" aria-current="page">campaign overview</a>
+  </nav>
+
+  <div class="headline waveform">
+    <div class="figure">2</div>
+    <div class="label">chains with impact proven, awaiting sign-off</div>
+  </div>
+
+  <div class="stage-rule">
+    <div class="stage">recon</div>
+    <div class="stage">fuzz-harness</div>
+    <div class="stage active">environment-runner</div>
+    <div class="stage active">triage</div>
+    <div class="stage active">exploit-dev</div>
+    <div class="stage">disclosure</div>
+  </div>
+
+  <div class="legend" id="legend" role="group" aria-label="filter by status">
+    <input type="checkbox" id="f-open" class="legend-toggle" data-status="open" />
+    <label for="f-open">open</label>
+    <input type="checkbox" id="f-fixed" class="legend-toggle" data-status="fixed" />
+    <label for="f-fixed">fixed</label>
+    <input type="checkbox" id="f-disclosed" class="legend-toggle" data-status="disclosed-upstream" />
+    <label for="f-disclosed">disclosed-upstream</label>
+    <input type="checkbox" id="f-fp" class="legend-toggle" data-status="false-positive" />
+    <label for="f-fp">false-positive</label>
+    <input type="checkbox" id="f-esc" class="legend-toggle" data-status="escalated-to-human" />
+    <label for="f-esc">escalated-to-human</label>
+  </div>
+
+  <div class="ledger cols-exploits" id="ledger">
+
+    <details data-status="escalated-to-human">
+      <summary>
+        <span class="col-target">img4 DER decode — crash → controlled 4-byte write</span>
+        <span class="col-src">fuzzer-confirmed</span>
+        <span class="col-score">heap OOB write, offset attacker-influenced</span>
+        <span class="col-status status" data-status="escalated-to-human"><span class="tick"></span>escalated-to-human</span>
+      </summary>
+      <div class="detail">
+        <dl>
+          <dt>target</dt><dd>state::img4::parse (fuzz target img4_decode)</dd>
+          <dt>technique source</dt><dd>in-session fuzzing, manual triage of the crashing corpus entry</dd>
+          <dt>sweep</dt><dd>2026-11-10-002-fallback-and-audit</dd>
+          <dt>chaining notes</dt><dd>write offset is attacker-influenced but not yet attacker-chosen — bounded escalation, not full control. PoC is a minimized malformed manifest, not a working exploit against any real device.</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details data-status="escalated-to-human">
+      <summary>
+        <span class="col-target">BootState deserialize — two panics chained past a validate() check</span>
+        <span class="col-src">exploit-dev-chain</span>
+        <span class="col-score">logic bypass of MeasuredPostureWithUnknownMode rule</span>
+        <span class="col-status status" data-status="escalated-to-human"><span class="tick"></span>escalated-to-human</span>
+      </summary>
+      <div class="detail">
+        <dl>
+          <dt>target</dt><dd>main::deserialize_baseline, state::validate</dd>
+          <dt>technique source</dt><dd>cargo-fuzz corpus mutation, independently re-reproduced in a second disposable environment</dd>
+          <dt>sweep</dt><dd>2026-11-11-001-host-independent-parsing-hardening</dd>
+          <dt>chaining notes</dt><dd>two distinct, individually-minor bugs combine to let a crafted --baseline file read as internally consistent when it is not. No device-security impact — bputil-eval's own input validation only.</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details data-status="open">
+      <summary>
+        <span class="col-target">ci_guards.sh bypass — candidate, not yet demonstrated</span>
+        <span class="col-src">static-analysis</span>
+        <span class="col-score">unconfirmed — regex gap identified, no working bypass built</span>
+        <span class="col-status status" data-status="open"><span class="tick"></span>open</span>
+      </summary>
+      <div class="detail">
+        <dl>
+          <dt>target</dt><dd>scripts/ci_guards.sh</dd>
+          <dt>technique source</dt><dd>static analysis only — exploit-dev has not yet attempted construction</dd>
+          <dt>sweep</dt><dd>2026-11-11-001-host-independent-parsing-hardening</dd>
+          <dt>chaining notes</dt><dd>linked to the same-named finding on the sweep &amp; findings view — tracked once here, not duplicated.</dd>
+        </dl>
+      </div>
+    </details>
+
+  </div>
+
+  <div class="rail">
+    <div class="rail-row"><span>chains proven, this cycle</span><span>2</span></div>
+    <div class="rail-row"><span>awaiting disclosure decision</span><span>2</span></div>
+    <div class="rail-row"><span>disposable environments used</span><span>1 active, 1 torn down</span></div>
+  </div>
+
+  <script>
+    const legend = document.getElementById("legend");
+    const rows = document.querySelectorAll("#ledger > details");
+
+    legend.addEventListener("change", () => {
+      const active = Array.from(legend.querySelectorAll(".legend-toggle:checked")).map(
+        (el) => el.dataset.status
+      );
+      rows.forEach((row) => {
+        row.hidden = active.length > 0 && !active.includes(row.dataset.status);
+      });
+    });
+  </script>
+</body>
+</html>

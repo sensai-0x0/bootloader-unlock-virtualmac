@@ -1,0 +1,46 @@
+/*
+  vuln_res dashboard — design tokens.
+  Palette, type, and spacing for a ledger-style read of the vuln_res/ suite's
+  sweep → findings → disclosure pipeline. See design/README.md for the brief
+  these tokens answer to.
+*/
+
+:root {
+  /* Surface — stepped graphite, never a single near-black */
+  --graphite-900: #14171a; /* page background */
+  --graphite-800: #1c2024; /* panel surface */
+  --graphite-700: #262b30; /* raised / active row / expanded detail */
+  --hairline: #333a40;     /* the only line style — no shadows anywhere */
+  --hairline-strong: #454d54;
+
+  /* Text — hierarchy lives in hue, not size */
+  --paper-white: #e9ece9;      /* primary: headline figures, active row content */
+  --paper-white-dim: #aeb4b0;  /* primary text at rest / unselected */
+  --signal-green: #4ade9c;        /* secondary: live state, in-progress, source tags */
+  --signal-green-muted: #5aa585;  /* tertiary TEXT: metadata, resolved states — AA-safe (~6:1) */
+  --signal-green-dim: #2c7a5a;    /* decorative only (borders, selection bg) — not for text, ~3.5:1 */
+  --amber-flag: #d9a441;          /* escalated-to-human only — never decorative */
+
+  /* Spacing — generous, ledger row rhythm */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 14px;
+  --space-4: 22px;
+  --space-5: 36px;
+  --space-6: 56px;
+
+  /* Type */
+  --font-structural: "Big Shoulders", "Arial Narrow", sans-serif;
+  --font-data: "Fragment Mono", "SF Mono", monospace;
+
+  --text-headline: 64px;
+  --text-section: 20px;
+  --text-label: 14px;
+  --text-data: 14px;
+  --text-micro: 12px;
+
+  --line-data: 1.5;
+  --line-label: 1.3;
+
+  --radius: 0px; /* deliberate — a ledger has no rounded corners */
+}
