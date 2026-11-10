@@ -80,3 +80,13 @@ rather than continuing to assume a third retry will differ. Until resolved, ever
 `vulnres-*` "agent" in this suite remains usable only as a **procedure document** that a
 general-purpose session or subagent reads and follows manually, not as an invokable
 `subagent_type`.
+
+**User confirmation (2026-11-10):** project-level `.claude/agents/*.md` files are meant
+to be scoped to the project they live in — discoverable when a session is working inside
+that project's directory, not globally across unrelated repos. That's the expected
+design, and it's exactly what's failing here: this session *is* running inside
+`the-ant-experiment` (the same repo the `vulnres-*` files live in), yet they still don't
+appear in the available-agents list. So the gap isn't "these are global agents that
+should've been filtered out" — it's "these are correctly-scoped project agents that
+aren't being discovered at all." Feedback already filed via `/feedback` on 2026-11-10;
+no further action pending here unless the user reports it's fixed in a later session.
