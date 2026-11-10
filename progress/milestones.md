@@ -31,6 +31,7 @@ service of it.
 | M7 | Written finding on why the VM path doesn't work, plus a decision on pursuing the same proof via `plans/phase-3.md`'s real scratch hardware instead | Decided: see M8 — a safer third option than either original branch, not a straight pivot to phase-3 | `progress/goal.md`'s "Decision, 2026-11-10" |
 | M8 | A VM built from a chip generation this host *can* virtualize (`tart create --from-ipsw=latest`), not the M6 image — re-opens M5's question on hardware that can actually attempt it, with strictly less risk than real scratch hardware | In progress — local IPSW downloaded (18.9 GB, `CURL_EXIT:0`), `tart create` against it running | `research/curl_download_25D125.log`; `research/ipsw_downloads/UniversalMac_26.3_25D125_Restore.ipsw` |
 | M9 | Determined whether `bputil`'s mutation path actually works inside *this* VM | **Done — yes, it works.** Both read (`bputil -d`) and mutation (`bputil -g -k -v <vuid>`, run live from the VM's recovery/1TR-equivalent by the user) succeeded, confirmed by a fresh post-reboot measurement | `research/vm_measure_25D125.log`, `research/vm_verify_postmutation_25D125.log` |
+| M10 | Full `Reduced -> Full -> Permissive` round trip, evidenced by the real `bputil-eval` binary (not just raw `bputil`) run against the live VM, with a committed evidence bundle | **Done** | `evidence/vm-sec-research-25D125/` (hash-verified) |
 
 ## Log
 
@@ -349,3 +350,69 @@ but `spec/phased-plan.md`'s P3 exit gate explicitly wants "full→reduced→full
 trip, and golden rule 5 requires a revert path to always exist. Left for a follow-up
 session or immediate continuation, at the user's call — the VM is still running, `Reduced`,
 reachable over SSH.
+
+### 2026-11-10 (continued) — M10: full round trip to `Permissive`, evidenced by the real `bputil-eval` binary, bundle committed under `evidence/`
+
+User asked to continue further — "open the bootloader" (this project's own vocabulary,
+per `reports/m2-bootloader-unlock-technicians-guide.md` §2, for the `Permissive`
+custom-kernel-capable security mode, the deepest point on the `Full/Reduced/Permissive`
+spectrum) — and to demonstrate the result as a real evidence bundle, not just terminal
+output.
+
+**Built the release binary** (`cargo build --release`) — confirmed `arm64` Mach-O,
+matching the VM's architecture exactly (same chip family, and this VM's macOS build is
+identical to the host's: `26.3`/`25D125`). Copied it onto the VM over `scp` and ran it
+*from the VM itself*, over SSH — this is the first time in this research track that the
+actual `bputil-eval` tool (not hand-typed `bputil`) measured a live target.
+
+1. **Baseline, live tool:** `bputil-eval evaluate --json` against the already-`Reduced`
+   VM confirmed `security_mode: "Reduced"`, `allows_third_party_kexts: true`,
+   `allows_custom_kernel: false` — matching `plan.rs`'s predicted invariants exactly, not
+   just raw `bputil -d` output. `bputil-eval report --session-id reduced-baseline` wrote a
+   first evidence bundle.
+2. **Revert, live owner:** rebooted to recovery; user ran `bputil -f -v
+   EAB17EE3-38E4-4EB5-9DA8-603399A81E90` themselves, typing credentials live. Fresh
+   `bputil -d` in that same recovery session (screenshotted by the user, not scripted)
+   confirmed `Security Mode: Full (smb0): absent`, `3rd Party Kexts Status: Disabled`,
+   nonce hash changed, `Cryptex1 Generation` incremented `2 -> 3`.
+3. **Permissive, live owner:** same session, user ran `bputil -n -c -s -v
+   EAB17EE3-38E4-4EB5-9DA8-603399A81E90`. Confirmed via screenshot:
+   `Security Mode: Permissive (smb0 && smb1): 1`, `Signed System Volume Status: Disabled`,
+   `Kernel CTRR Status: Disabled`, `SIP Status: Enabled` (unaffected, as `plan.rs` predicts
+   — only SSV/CTRR/mode change under `PermissiveCustomKernel`, not SIP itself). Nonce hash
+   changed again, `Cryptex1 Generation` `3 -> 4`.
+4. **Fresh verify, live tool:** rebooted to normal macOS, SSH'd back in, ran
+   `bputil-eval evaluate --json` (confirmed `security_mode: "Permissive"`,
+   `ssv_enabled: false`, `allows_custom_kernel: true`) and
+   `bputil-eval verify --baseline <Reduced-state evaluate output> --json`, which produced
+   the tool's own structured diff:
+   ```
+   target_container.security_mode:        Reduced -> Permissive
+   target_container.ssv_enabled:          true -> false
+   target_container.allows_custom_kernel: false -> true
+   ```
+   `bputil-eval report --session-id permissive-final` wrote the second evidence bundle.
+
+**Tooling finding, worth recording:** the VM's own on-disk copy of the intermediate
+`~/baseline_reduced.json` (written via `evaluate --json > file` right after step 1) was
+**not present** after the two subsequent `tart stop` / recovery-reboot cycles, even though
+`~/bputil-eval` and `~/evidence/reduced-baseline/*` (written in the same session, same
+disk) both survived intact. Root cause not confirmed — recorded as an open observation,
+not a diagnosed bug, since it didn't block this session (the file's content was recovered
+from this session's own captured terminal log instead, not re-derived or guessed, and its
+hash was verified consistent). Worth a closer look before relying on a `tart` VM's disk as
+durable scratch storage across recovery-mode reboots specifically.
+
+**All four files' hash chains verified locally** (`shasum -a 256 -c`) before committing —
+see `evidence/vm-sec-research-25D125/README.md` for the full bundle manifest and what it
+does/doesn't prove. This is the first evidence in this project produced by the actual
+`bputil-eval` binary against a live, mutated target — previously all measurements in this
+track used raw `bputil`/`csrutil` directly. `authorize`/`execute`/`verify.assert_invariants`
+(P3) still did not run any of it; every mutating command was typed live by the user.
+
+**Next up:** none required for M8/M9/M10 as scoped — all closed. Possible follow-ups, not
+started: complete the round trip back to `Full` (for golden rule 5's "a revert path must
+always exist" in its fullest sense); investigate the `baseline_reduced.json` persistence
+finding above; or move toward wiring `authorize`/`execute`/`verify.assert_invariants` (P3)
+now that a disposable target proven to round-trip exists — a decision for the user, not
+assumed here, per `CLAUDE.md`'s existing P3 boundary discussion.

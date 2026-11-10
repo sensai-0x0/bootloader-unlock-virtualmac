@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "session_id": "verify-1794316891",
+  "baseline": {
+    "schema_version": 1,
+    "captured_at": "2026-11-10T13:10:23.513772Z",
+    "environment": "MacOs",
+    "host": {
+      "chip": "Apple M2 Pro (Virtual)",
+      "macos_build": "25D125",
+      "serial_masked": "C50W"
+    },
+    "target_container": {
+      "volume_group_uuid": "EAB17EE3-38E4-4EB5-9DA8-603399A81E90",
+      "security_mode": "Reduced",
+      "ssv_enabled": true,
+      "allows_custom_kernel": false,
+      "allows_third_party_kexts": true
+    },
+    "enrolled_objects": [],
+    "other_containers": [],
+    "evidence": {
+      "raw_outputs": [
+        {
+          "command": [
+            "csrutil",
+            "authenticated-root",
+            "status"
+          ],
+          "exit_code": 0,
+          "stdout_sha256": "77ae019616ac852bb605a35ca82c25246862cc856f0fbec7b5815a9929f75bcb"
+        },
+        {
+          "command": [
+            "sudo",
+            "-n",
+            "bputil",
+            "-d"
+          ],
+          "exit_code": 0,
+          "stdout_sha256": "44e66ace74e3d9594e07631b0ce5ccc7128141e7d81c74a155fbc3c6f0631d5d"
+        }
+      ]
+    }
+  },
+  "result": {
+    "schema_version": 1,
+    "captured_at": "2026-11-10T13:21:31.606494Z",
+    "environment": "MacOs",
+    "host": {
+      "chip": "Apple M2 Pro (Virtual)",
+      "macos_build": "25D125",
+      "serial_masked": "C50W"
+    },
+    "target_container": {
+      "volume_group_uuid": "EAB17EE3-38E4-4EB5-9DA8-603399A81E90",
+      "security_mode": "Permissive",
+      "ssv_enabled": false,
+      "allows_custom_kernel": true,
+      "allows_third_party_kexts": true
+    },
+    "enrolled_objects": [],
+    "other_containers": [],
+    "evidence": {
+      "raw_outputs": [
+        {
+          "command": [
+            "csrutil",
+            "authenticated-root",
+            "status"
+          ],
+          "exit_code": 0,
+          "stdout_sha256": "b1c9e8c712ed2b925fbd18c83f227405409d9013ea3e14b0bbc4f0aeb7d84301"
+        },
+        {
+          "command": [
+            "sudo",
+            "-n",
+            "bputil",
+            "-d"
+          ],
+          "exit_code": 0,
+          "stdout_sha256": "b650a84922be2bb855e36af4d14fae97e6bc4c474ca42ef88d1b9fa434f7aed3"
+        }
+      ]
+    }
+  },
+  "diff": [
+    {
+      "path": "target_container.security_mode",
+      "before": "Reduced",
+      "after": "Permissive"
+    },
+    {
+      "path": "target_container.ssv_enabled",
+      "before": "true",
+      "after": "false"
+    },
+    {
+      "path": "target_container.allows_custom_kernel",
+      "before": "false",
+      "after": "true"
+    }
+  ],
+  "invariants": [],
+  "exit_code": 0
+}

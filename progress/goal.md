@@ -19,9 +19,9 @@ This phrase is doing a lot of work and is easy to misread, so pin it down precis
   bypassing a signature check, defeating the Secure Enclave, or touching a device or VM
   the person running this project doesn't own or control. `spec/build-spec.md`'s golden
   rules apply here exactly as they do everywhere else in this codebase — a virtual machine
-  you created and control is still a device this project only ever modifies through
-  Apple's own `bputil`/`kmutil`/`csrutil`, with its own equivalent of an owner present and
-  authorizing, never through a bypass.
+  you created and control is still a device this project only ever modifies through this
+  project's custom toolchain driving `bputil`/`kmutil`/`csrutil`, with its own equivalent
+  of an owner present and authorizing, never through a bypass.
 - **"Verifying" means a fresh measurement, not an assumption.** The success condition for
   every milestone below is `bputil-eval evaluate`/`verify` actually reporting the new
   state, not a plan having been generated or a command having been *attempted*. Golden

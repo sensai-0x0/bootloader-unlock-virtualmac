@@ -12,7 +12,7 @@ This is a research track running alongside the phased build plan, not part of th
 
 It exists because `spec/phased-plan.md`'s P3 exit gate (`reports/execution-product.md` §6) requires a disposable scratch target, and real scratch hardware carries physical risk (DFU-restore exposure, a real device at stake). A disposable VM — fully virtual, no physical device, owner credentials created fresh for the VM — is strictly lower-risk if it can do the same job.
 
-**This track never attempts to bypass a signature check, defeat the Secure Enclave, or touch a device this project doesn't own or control.** A VM created by this project is still a device that is only ever modified through Apple's own `bputil`/`kmutil`/`csrutil`, with its own equivalent of an owner present and authorizing — exactly as `spec/build-spec.md`'s golden rules require for real hardware.
+**This track never attempts to bypass a signature check, defeat the Secure Enclave, or touch a device this project doesn't own or control.** A VM created by this project is still a device that is only ever modified through this project's custom toolchain driving `bputil`/`kmutil`/`csrutil`, with its own equivalent of an owner present and authorizing — exactly as `spec/build-spec.md`'s golden rules require for real hardware.
 
 ## 2. Two tracks, honestly labeled separately
 

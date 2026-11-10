@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "session_id": "reduced-baseline",
+  "baseline": {
+    "schema_version": 1,
+    "captured_at": "2026-11-10T13:10:23.75064Z",
+    "environment": "MacOs",
+    "host": {
+      "chip": "Apple M2 Pro (Virtual)",
+      "macos_build": "25D125",
+      "serial_masked": "C50W"
+    },
+    "target_container": {
+      "volume_group_uuid": "EAB17EE3-38E4-4EB5-9DA8-603399A81E90",
+      "security_mode": "Reduced",
+      "ssv_enabled": true,
+      "allows_custom_kernel": false,
+      "allows_third_party_kexts": true
+    },
+    "enrolled_objects": [],
+    "other_containers": [],
+    "evidence": {
+      "raw_outputs": [
+        {
+          "command": [
+            "csrutil",
+            "authenticated-root",
+            "status"
+          ],
+          "exit_code": 0,
+          "stdout_sha256": "77ae019616ac852bb605a35ca82c25246862cc856f0fbec7b5815a9929f75bcb"
+        },
+        {
+          "command": [
+            "sudo",
+            "-n",
+            "bputil",
+            "-d"
+          ],
+          "exit_code": 0,
+          "stdout_sha256": "44e66ace74e3d9594e07631b0ce5ccc7128141e7d81c74a155fbc3c6f0631d5d"
+        }
+      ]
+    }
+  },
+  "result": null,
+  "diff": [],
+  "invariants": [],
+  "exit_code": 0
+}

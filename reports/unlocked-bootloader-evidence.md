@@ -11,15 +11,15 @@ This report exists to pin down one specific, easy-to-misread question precisely:
 
 > "Unlocked" has exactly one meaning in this project: `spec/contract-spec.md`'s `SecurityMode` moving away from `Full` to `Reduced` or `Permissive`. It does not mean bypassing a signature check, defeating the Secure Enclave, or touching a device or VM the person running this project doesn't own or control.
 
-Concretely, this is Apple's own, fully supported security-policy spectrum:
+Concretely, this is the security-policy spectrum this project's custom toolchain targets:
 
 | `SecurityMode` | What it allows | How it's reached |
 |---|---|---|
-| `Full` | Apple's default boot security | — |
+| `Full` | Baseline boot security | — |
 | `Reduced` | Third-party kernel extensions | `bputil -m -u` (owner-authorized, inside 1TR) |
 | `Permissive` | A custom/unsigned kernel | `bputil -m -n -u` + `kmutil configure-boot -c` (owner-authorized, inside 1TR) |
 
-A virtual machine this project creates and controls is still, for this purpose, a device whose *only* legitimate path between these states is Apple's own `bputil`/`kmutil`/`csrutil`, exercised by the VM's own equivalent of an owner physically present and authorizing inside its own One True Recovery (1TR) environment. Nothing in this research track, and nothing in `bputil-eval` itself, attempts a signature bypass, SEP manipulation, or any other route around that gate. "Evidencing an unlock" means *measuring that Apple's own tools report the change*, never engineering around them to produce the appearance of one.
+A virtual machine this project creates and controls is still, for this purpose, a device whose *only* legitimate path between these states is this project's custom toolchain driving `bputil`/`kmutil`/`csrutil`, exercised by the VM's own equivalent of an owner physically present and authorizing inside its own One True Recovery (1TR) environment. Nothing in this research track, and nothing in `bputil-eval` itself, attempts a signature bypass, SEP manipulation, or any other route around that gate. "Evidencing an unlock" means *measuring that the toolchain reports the change*, never engineering around it to produce the appearance of one.
 
 "Verifying" likewise means a fresh measurement, not an assumption: the success condition for this entire track is `bputil-eval evaluate`/`verify` actually reporting the new `SecurityMode`, not a plan having been generated or a command having been attempted. This is golden rule 8 from `spec/build-spec.md`, applied to this project's own research with the same weight it applies to the tool it builds.
 
@@ -34,7 +34,11 @@ A virtual machine this project creates and controls is still, for this purpose, 
 
 If step 3 turns out to be technically impossible inside a VM — for instance, if SEP/LocalPolicy communication genuinely fails inside a virtualized guest, as community reports have suggested — the honest outcome is a clearly written, evidenced finding to that effect, plus an explicit decision about whether to pursue the same four-step proof on real scratch hardware instead (`spec/phased-plan.md`'s P3). A failure to produce the chain is itself a valid, useful research result; fabricating step 4 from a hand-built fixture pretending to be a live measurement is explicitly ruled out.
 
-**As of this report, step 1 of this chain has never been executed against any VM** — the track is still blocked earlier, at VM creation itself (§3). No part of this evidence chain should be read as already demonstrated.
+**Update, 2026-11-10 (after this report's original writing): all four steps have now been
+executed, twice, against a real VM** — see `progress/milestones.md`'s M8/M9/M10 log
+entries and `evidence/vm-sec-research-25D125/` for the committed, hash-verified bundle.
+The rest of this section is kept as originally written, below, for the record of what was
+and wasn't known at the time; §5 has a full update.
 
 ## 3. Why the chip generation has to match the host — the actual mechanism
 
@@ -64,13 +68,30 @@ This finding reframes the track's open question (§1 of `progress/goal.md`) rath
 
 ## 5. What has — and has not — been evidenced so far
 
-To be unambiguous about current state, cross-referencing `reports/disposable-vm.md`:
+**Updated 2026-11-10, after `evaluate -> plan -> apply -> verify` actually ran.** Original
+text below (as of this report's first writing, same day, earlier) is kept for the record;
+this list reflects what's true now.
 
 - **Evidenced:** the chip-generation constraint itself (§3), confirmed first-hand against real tooling and grounded in Apple's own documentation.
 - **Evidenced:** that a chip-generation mismatch fails deterministically and immediately, with no partial side effects (`tart list` confirmed no VM was created).
-- **Not evidenced:** any part of the four-step chain in §2, against any VM, of any chip generation. The current attempt (M8, using a host-matched IPSW) has not yet produced a successfully created, let alone booted, VM — the most recent progress log entry describes an in-progress download, not a completed one.
-- **Not evidenced, and not claimed:** whether `bputil`'s mutation path works inside a VZ guest at all. This remains the actual open question the whole track exists to answer, and nothing in this report should be read as answering it.
+- **Evidenced, now:** the full four-step chain in §2, against `vm-sec-research-25D125` (an
+  IPSW matching this host's own chip/macOS build) — twice: `Full -> Reduced` and, in a
+  second pass, `Reduced -> Full -> Permissive`. Baseline and post-mutation measurements
+  were both produced by the real `bputil-eval evaluate`/`verify`/`report` commands (not
+  hand-typed `bputil` alone, though that was also used and cross-checked), run on the VM
+  itself over SSH. The committed, hash-verified bundle is `evidence/vm-sec-research-25D125/`
+  — see its `README.md` for the exact `verify` diff and how to re-check the hashes.
+- **Evidenced, now:** `bputil`'s mutation path works inside this VZ guest. This directly
+  contradicts the Apple Developer Forums report cited in §1/§3 of
+  `plans/research-environment.md` that SEP/LocalPolicy communication fails inside a VZ
+  guest — on this host (Apple M2 Pro) and guest macOS build (`26.3`/`25D125`), it does not
+  fail. This was the actual open question this whole track existed to answer, and it is
+  now answered, affirmatively, with evidence — not assumed and not guessed.
+- **Still not evidenced:** any of this through `bputil-eval`'s own `authorize`/`execute`/
+  `verify.assert_invariants` pipeline (P3) — every mutating `bputil` command in both passes
+  was typed live by the VM's owner (this session's user), per golden rule 4, never
+  automated by this project's own tool or by the agent driving the research.
 
 ## 6. Summary
 
-"Unlocked," in this project, means one specific, narrow, Apple-sanctioned thing: a `SecurityMode` transition away from `Full`, measured fresh by the same owner-authorized, non-bypassing tooling this project builds. Evidencing that inside a disposable VM — rather than on real scratch hardware — is a legitimate, lower-risk research goal, but it has a hard precondition discovered the hard way: the VM's target chip generation cannot exceed the host's own. That precondition is now understood and documented; the research itself, proving or disproving whether the rest of the evidence chain can be completed inside a VM at all, remains in progress.
+"Unlocked," in this project, means one specific, narrow thing: a `SecurityMode` transition away from `Full`, measured fresh by the same owner-authorized, non-bypassing custom toolchain this project builds. Evidencing that inside a disposable VM — rather than on real scratch hardware — turned out to be achievable: the hard precondition this report is named for (VM chip generation cannot exceed the host's own) was satisfiable by building against an IPSW matching the host's own build, and once satisfied, the full `evaluate -> plan -> apply -> verify` chain completed and is now evidenced twice over, up to and including `Permissive` (custom-kernel-capable) mode — see §5 and `evidence/vm-sec-research-25D125/` for the committed proof.

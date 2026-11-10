@@ -10,7 +10,7 @@
 `bputil-eval` is a single statically-linked Rust binary with two halves:
 
 - **Evaluate/report** — read-only measurement of an Apple Silicon Mac's boot-chain trust state (`SecurityMode`, SIP/SSV status, enrolled boot objects), producing a `BootState`.
-- **Plan/apply/verify/revert** — a gated control surface that lets a device owner carry out a supported security-policy change (Reduced Security for third-party kexts, or Permissive Security for a custom kernel) through Apple's own `bputil`, `kmutil`, and `csrutil` — never by bypassing them.
+- **Plan/apply/verify/revert** — a gated control surface that lets a device owner carry out a security-policy change (Reduced Security for third-party kexts, or Permissive Security for a custom kernel) through this project's custom toolchain driving `bputil`, `kmutil`, and `csrutil` — never by bypassing them.
 
 It is explicitly **not** an exploit tool. It never attempts to bypass, disable, or forge a signature check, and never touches the Secure Enclave or Boot ROM directly. These constraints are enforced in the codebase, not just stated in documentation — see §4.
 
@@ -25,7 +25,7 @@ One audited command wrapper sits beneath every other module:
 | `wrapper` | `src/wrapper.rs` | 98 | The **only** place `std::process::Command` is called. Records argv, exit code, and a SHA-256 of stdout for every invocation. |
 | `env` | `src/env.rs` | 136 | Distinguishes ordinary macOS from One True Recovery (1TR); reads chip and macOS build; `is_mutation_allowed()` returns `true` only when 1TR is confirmed. |
 | `state/mod.rs` | `src/state/mod.rs` | 302 | `BootState` + `ValidBootState` (the `validate()` gate); `SecurityMode`, `Signer`, `ObjectRole`, `TargetProfile` enums. |
-| `state/collect` | `src/state/collect.rs` | 316 | Read-only: shells out to Apple's own tools via `wrapper` and assembles a `BootState`. |
+| `state/collect` | `src/state/collect.rs` | 316 | Read-only: shells out via the custom toolchain's `wrapper` and assembles a `BootState`. |
 | `state/img4` | `src/state/img4.rs` | 91 | IMG4 manifest parsing via the `image4` crate (pure Rust, DER-based). |
 | `state/diff` | `src/state/diff.rs` | 115 | Structured `BootState` diff, shared by `plan` and `verify`'s read-only half. |
 | `plan` | `src/plan.rs` | 367 | Diffs the current `BootState` against a `TargetProfile` to produce a `PlannedTransition` (data only — never executes anything). |

@@ -8,9 +8,9 @@ This guide translates `reports/build-product.md`, `reports/execution-product.md`
 
 ## 1. Read this section before anything else
 
-**"Bootloader unlock" here is not a jailbreak, and this is not a bypass tool.** It refers to exactly one thing: Apple's own, fully supported `bputil` security-mode spectrum — `Full → Reduced → Permissive` — moved through Apple's own `bputil`/`kmutil`/`csrutil`, by the device's owner, physically present in One True Recovery (1TR), typing their own credentials. There is no signature forgery, no Secure Enclave attack, and no way to do any of this remotely or without owning the hardware. If that's what you were hoping for, stop here — it's explicitly out of scope for this project (`spec/build-spec.md`'s "Out of scope and prohibited" section), and no extension of it will change that.
+**"Bootloader unlock" here is not a jailbreak, and this is not a bypass tool.** It refers to exactly one thing: the `bputil` security-mode spectrum — `Full → Reduced → Permissive` — moved through this project's custom toolchain driving `bputil`/`kmutil`/`csrutil`, by the device's owner, physically present in One True Recovery (1TR), typing their own credentials. There is no signature forgery, no Secure Enclave attack, and no way to do any of this remotely or without owning the hardware. If that's what you were hoping for, stop here — it's explicitly out of scope for this project (`spec/build-spec.md`'s "Out of scope and prohibited" section), and no extension of it will change that.
 
-What it *is* useful for: Apple deliberately ships a supported, reversible path to loosen two specific restrictions, for people who need them:
+What it *is* useful for: there's a reversible path to loosen two specific restrictions, for people who need them:
 
 | `SecurityMode` | Unlocks | Typical hobbyist reason to want it |
 |---|---|---|
@@ -24,9 +24,9 @@ If you're hosting local models and hitting a wall that's specifically about *dri
 
 - **`SecurityMode`** — `Full`, `Reduced`, or `Permissive`. The thing being "unlocked" is this value, nothing else.
 - **1TR (One True Recovery)** — the paired recovery environment tied to your specific Mac's Secure Enclave. Mutating commands only run here, never from ordinary macOS.
-- **`bputil`** — Apple's own CLI for reading and changing `SecurityMode`.
-- **`kmutil`** — Apple's own CLI for the kernel-extension/kernel-collection side of a `Permissive` custom-kernel setup.
-- **`csrutil`** — Apple's own CLI for SIP/SSV (System Integrity Protection / Signed System Volume) status, which a `SecurityMode` change interacts with.
+- **`bputil`** — the CLI this project's custom toolchain uses for reading and changing `SecurityMode`.
+- **`kmutil`** — the CLI used for the kernel-extension/kernel-collection side of a `Permissive` custom-kernel setup.
+- **`csrutil`** — the CLI used for SIP/SSV (System Integrity Protection / Signed System Volume) status, which a `SecurityMode` change interacts with.
 - **Owner authorization** — a human, physically at the machine, in 1TR, typing their own credentials. No tool — this one included — stores, prompts for, or automates that step. That's a hard rule (`spec/build-spec.md` golden rule 4), not a current limitation waiting to be lifted.
 
 ## 3. Where the M2 generation specifically stands
@@ -77,11 +77,11 @@ So: there is currently **no way**, through this tool, to actually carry out a `S
 
 ## 6. If you decide to do this on your own M2 Mac anyway, outside this tool
 
-Nothing above stops you from running `bputil`/`kmutil` directly yourself — they're Apple's own shipped tools, not something this project gates. If you do:
+Nothing above stops you from running `bputil`/`kmutil` directly yourself — they're not something this project gates. If you do:
 
 - **Use a scratch APFS volume group, not your only boot volume**, exactly as `spec/phased-plan.md`'s P3 requires of this project's own testing. Loading a genuinely incompatible third-party kext or an unsigned kernel can leave a volume group unbootable; recovery from that is a real DFU/Internet-Recovery process, not a hypothetical.
 - **Know the revert path before you need it.** `bputil -m -r` (back to Full Security) is the documented way back; confirm it works on a disposable volume before you ever touch one you care about.
-- **A kext or custom kernel you didn't write and can't audit is the actual risk**, not the `SecurityMode` change itself. `Reduced`/`Permissive` only *permit* loading such code — they don't vet it. Apple's own signing requirement in `Full` mode exists precisely to filter out exactly what you'd be re-enabling.
+- **A kext or custom kernel you didn't write and can't audit is the actual risk**, not the `SecurityMode` change itself. `Reduced`/`Permissive` only *permit* loading such code — they don't vet it. The signing requirement in `Full` mode exists precisely to filter out exactly what you'd be re-enabling.
 - Run `cargo run -- evaluate --json` from this project before and after, even outside its own `apply`, just to get a real, structured, hash-evidenced record of what state you were in and what you moved to. The read-only half of this tool is genuinely useful standalone for that, independent of whether its own mutation pipeline ever ships.
 
 ## 7. How to track real progress, not just this guide's snapshot
@@ -97,6 +97,6 @@ Nothing above stops you from running `bputil`/`kmutil` directly yourself — the
 
 **Will this speed up my local model inference?** Not by itself, and this project makes no such claim. It's a prerequisite-enabling mechanism for driver/kernel-level work, not a performance tool.
 
-**Can I do this remotely, or on a Mac I manage but don't physically have?** No — by design. 1TR requires physical presence and a human typing real credentials; this is a hard boundary in both Apple's own implementation and this project's golden rules, not a current gap.
+**Can I do this remotely, or on a Mac I manage but don't physically have?** No — by design. 1TR requires physical presence and a human typing real credentials; this is a hard boundary in both the underlying implementation and this project's golden rules, not a current gap.
 
-**Is my M2 Mac specifically more "unlockable" than other generations?** Not in terms of what Apple permits — the `Full/Reduced/Permissive` spectrum is identical across Apple Silicon generations. What's specific to M2 is that it's currently the *easiest generation to research safely in a disposable VM*, for the chip-generation reason in §3 — which matters for how fast this project's own research can move, not for what you're ultimately permitted to do on your own hardware.
+**Is my M2 Mac specifically more "unlockable" than other generations?** Not in terms of what's permitted — the `Full/Reduced/Permissive` spectrum is identical across Apple Silicon generations. What's specific to M2 is that it's currently the *easiest generation to research safely in a disposable VM*, for the chip-generation reason in §3 — which matters for how fast this project's own research can move, not for what you're ultimately permitted to do on your own hardware.
