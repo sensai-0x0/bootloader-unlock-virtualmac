@@ -59,9 +59,24 @@ operational/infrastructure gap in the suite's own invocability, tracked here bec
 
 ## Resolution
 
-Open. Next step: the next Claude Code session started in this repo (or with this
-project's `.claude/agents/` on its path) should try `Agent({ subagent_type:
-"vulnres-recon" })` again and confirm whether it now resolves. If it does, close this
-and note the fix (session restart) in `knowledge/`. If it still doesn't, that's worth
-raising as a question about this harness's `.claude/agents/` discovery mechanism, not
-something to keep working around by running procedures manually.
+Still open — re-tested 2026-11-10 in a genuinely fresh session (after `/clear`, with the
+`.claude/agents/vulnres-*.md` files now committed to the repo, not just present on disk
+as untracked files as they were during the first test). Same result:
+
+```
+Agent({ subagent_type: "vulnres-recon", ... })
+=> Agent type 'vulnres-recon' not found. Available agents: api-contract-validator,
+bohemian-design-expert, claude, claude-code-guide, documentation-architect,
+error-analyzer-resolver, Explore, frontend-design-auditor, general-purpose,
+integration-production-specialist, Plan, statusline-setup
+```
+
+This rules out "just needs a session restart" as the fix — a fresh session with the
+files committed still doesn't see them. The seven `vulnres-*` agent definitions in
+`.claude/agents/` are not being picked up by this harness's project-level agent
+discovery at all, in this environment, across two independent sessions. Worth raising
+directly with the user as a possible product/harness question (e.g. via `SendFeedback`)
+rather than continuing to assume a third retry will differ. Until resolved, every
+`vulnres-*` "agent" in this suite remains usable only as a **procedure document** that a
+general-purpose session or subagent reads and follows manually, not as an invokable
+`subagent_type`.
