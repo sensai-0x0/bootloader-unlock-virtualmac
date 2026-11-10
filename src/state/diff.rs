@@ -70,13 +70,16 @@ pub fn diff(before: &BootState, after: &BootState) -> Vec<DiffEntry> {
 mod tests {
     use super::*;
     use crate::env::Environment;
-    use crate::state::{Evidence, Host, SCHEMA_VERSION, SecurityMode, TargetContainer};
+    use crate::state::{
+        Evidence, Host, PostureConfidence, SCHEMA_VERSION, SecurityMode, TargetContainer,
+    };
 
     fn state(security_mode: SecurityMode) -> BootState {
         BootState {
             schema_version: SCHEMA_VERSION,
             captured_at: "2026-01-01T00:00:00Z".to_string(),
             environment: Environment::MacOs,
+            posture_confidence: PostureConfidence::Unmeasured,
             host: Host {
                 chip: "Apple M2 Pro".to_string(),
                 macos_build: "24A335".to_string(),

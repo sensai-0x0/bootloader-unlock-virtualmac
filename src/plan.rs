@@ -218,13 +218,14 @@ fn consequences_for(target: TargetProfile) -> Vec<String> {
 mod tests {
     use super::*;
     use crate::env::Environment;
-    use crate::state::{Evidence, Host, SCHEMA_VERSION, TargetContainer};
+    use crate::state::{Evidence, Host, PostureConfidence, SCHEMA_VERSION, TargetContainer};
 
     fn baseline_with_mode(mode: SecurityMode) -> BootState {
         BootState {
             schema_version: SCHEMA_VERSION,
             captured_at: "2026-01-01T00:00:00Z".to_string(),
             environment: Environment::MacOs,
+            posture_confidence: PostureConfidence::Unmeasured,
             host: Host {
                 chip: "Apple M2 Pro".to_string(),
                 macos_build: "24A335".to_string(),

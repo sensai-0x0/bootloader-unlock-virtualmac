@@ -32,8 +32,8 @@
 
 use crate::env;
 use crate::state::{
-    BootState, BootStateError, Evidence, Host, OtherContainer, RawOutput, SCHEMA_VERSION,
-    SecurityMode, TargetContainer,
+    BootState, BootStateError, Evidence, Host, OtherContainer, PostureConfidence, RawOutput,
+    SCHEMA_VERSION, SecurityMode, TargetContainer,
 };
 use crate::wrapper::{self, CommandRecord, WrapperError};
 use time::OffsetDateTime;
@@ -108,6 +108,10 @@ pub fn collect() -> Result<BootState, CollectError> {
         schema_version: SCHEMA_VERSION,
         captured_at: now_rfc3339(),
         environment,
+        // Phase-1 follow-up wiring: until `collect` derives it from its own
+        // measurement paths, every state ships Unmeasured — conservative, never
+        // overclaiming (`PostureConfidence` doc, state/mod.rs).
+        posture_confidence: PostureConfidence::Unmeasured,
         host: Host {
             chip: host_info.chip,
             macos_build: host_info.macos_build,

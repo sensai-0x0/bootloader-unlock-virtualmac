@@ -61,6 +61,9 @@ not in the future
 environment
 Environment
 present
+posture_confidence
+PostureConfidence (Measured | UntrustedRead | Unmeasured)
+present once collected derives it (phase-1 follow-up); deserialisation of baselines predating the field defaults to Unmeasured — never upgrade a stale claim's confidence
 host.chip / host.macos_build
 string
 non-empty

@@ -39,6 +39,34 @@ pub enum ObjectRole {
     CustomBootObject,
 }
 
+/// How trustworthy the ambience measurement of this `BootState` is.
+///
+/// From the evaluator decision table's "Build next" item 1
+/// (`reports/evaluator/evaluator-decisions-2026-11-11.md`): a consumer must be able to
+/// distinguish "measured Full" from "unmeasured", because silent `Unknown` degradation
+/// (missing sudo, unparseable tool output) otherwise reduces detection fidelity without
+/// saying so. The honesty rule the decision attaches: the field must make *unmeasured*
+/// louder, not quieter.
+///
+/// Not yet derived by `state::collect` — the wiring is phase-1's next follow-up. Until
+/// then the serde default below makes every legacy `schema_version` 1 baseline
+/// deserialise to the most conservative variant, so nothing overclaims confidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PostureConfidence {
+    /// `security_mode` and the derived booleans were measured directly from Apple tool
+    /// output this collection (wired into `state::collect` — see above).
+    Measured,
+    /// Derived from weaker secondary signals (e.g. `csrutil`-only or partially
+    /// degraded parses); direction of the indicator is readable, precision is not.
+    UntrustedRead,
+    /// Nothing may be claimed about this ambient's measurement confidence.
+    Unmeasured,
+}
+
+fn default_posture_confidence() -> PostureConfidence {
+    PostureConfidence::Unmeasured
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Host {
     pub chip: String,
@@ -89,6 +117,11 @@ pub struct BootState {
     /// RFC3339, must not be in the future.
     pub captured_at: String,
     pub environment: Environment,
+    /// See [`PostureConfidence`]. Defaults to [`PostureConfidence::Unmeasured`] on
+    /// deserialisation so pre-schema-addition baselines stay readable and never
+    /// upgrade their own confidence claim.
+    #[serde(default = "default_posture_confidence")]
+    pub posture_confidence: PostureConfidence,
     pub host: Host,
     pub target_container: TargetContainer,
     pub enrolled_objects: Vec<EnrolledObject>,
@@ -196,6 +229,7 @@ mod tests {
             schema_version: SCHEMA_VERSION,
             captured_at: "2026-01-01T00:00:00Z".to_string(),
             environment: Environment::MacOs,
+            posture_confidence: PostureConfidence::Measured,
             host: Host {
                 chip: "Apple M2 Pro".to_string(),
                 macos_build: "24A335".to_string(),
@@ -220,6 +254,57 @@ mod tests {
     #[test]
     fn well_formed_full_state_is_valid() {
         assert!(validate(&valid_full_state()).is_ok());
+    }
+
+    #[test]
+    fn legacy_baseline_without_posture_confidence_deserialises_as_unmeasured() {
+        // A pre-schema-addition baseline (see
+        // `evidence/vm-sec-research-25D125/baseline_reduced.json`): no
+        // `posture_confidence` key. It must remain readable, and must not upgrade
+        // its own confidence claim — the serde default is Unmeasured, exactly the
+        // honesty rule the decision table attaches ("make unmeasured louder").
+        let legacy = serde_json::json!({
+            "schema_version": 1,
+            "captured_at": "2026-01-01T00:00:00Z",
+            "environment": "MacOs",
+            "host": { "chip": "Apple M2 Pro", "macos_build": "24A335", "serial_masked": "WXYZ" },
+            "target_container": {
+                "volume_group_uuid": "AAAA-TARGET",
+                "security_mode": "Full",
+                "ssv_enabled": true,
+                "allows_custom_kernel": false,
+                "allows_third_party_kexts": false
+            },
+            "enrolled_objects": [],
+            "other_containers": [],
+            "evidence": { "raw_outputs": [] }
+        });
+        let parsed: BootState = serde_json::from_value(legacy).expect("legacy baseline parses");
+        assert_eq!(parsed.posture_confidence, PostureConfidence::Unmeasured);
+        assert!(
+            parsed.captured_at.contains("2026"),
+            "fields survive round-trip"
+        );
+    }
+
+    #[test]
+    fn postured_confidence_variant_does_not_break_validate() {
+        for variant in [
+            PostureConfidence::Measured,
+            PostureConfidence::UntrustedRead,
+            PostureConfidence::Unmeasured,
+        ] {
+            let mut s = valid_full_state();
+            s.posture_confidence = variant;
+            assert!(validate(&s).is_ok());
+        }
+    }
+
+    #[test]
+    fn serialisation_carries_posture_confidence() {
+        let s = valid_full_state();
+        let json = serde_json::to_string(&s).expect("serialises");
+        assert!(json.contains("posture_confidence"));
     }
 
     #[test]
