@@ -1,0 +1,3 @@
+# WAL sidecars — never committed; the DB is checkpointed (TRUNCATE) before every commit.
+portfolio.db-wal
+portfolio.db-shm

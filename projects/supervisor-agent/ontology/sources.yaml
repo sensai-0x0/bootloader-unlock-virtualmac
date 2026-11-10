@@ -1,0 +1,106 @@
+# Supervisor-agent source registry — BUILD-SPEC §2.
+# One entry per source the parsers may read. Phase 0 registers paths, authority
+# and target objects; `parser:` stays `deferred` until the phase that builds it
+# (§8 marks which). Adding a source means adding it HERE first, never inline in
+# parser code.
+#
+# Fields:
+#   id:        stable registry id, referenced by provenance.source_type
+#   paths:     glob(s) the parser reads; first match is the anchor for provenance
+#   authority: high | medium-high | medium | low — resolution order when sources
+#              disagree; higher authority wins into `contradictions` (loser recorded)
+#   objects:   object types (BUILD-SPEC §2.1) this source populates
+#   parser:    deferred | regex:<name> — never a guessed-through-parse; a failing
+#              parser emits a `parse_failures` row and degrades this source to
+#              authority 0 for the run (§2.2)
+#   live:      true once the parser exists and has run against the real content
+
+sources:
+
+  - id: milestones
+    paths: ["progress/goal.md", "progress/milestones.md"]
+    authority: high
+    objects: [initiative, evidence, milestone, milestone_log]
+    parser: deferred            # built in phase 1 (sources 1–2)
+    live: false
+    notes: >
+      The user's own record; newer dated entries in the same file outrank older
+      ones and nothing else does. `milestones.md`'s own rules govern it: statuses
+      verbatim from the table, 'Next up' lines are decision-engine input (§3.1
+      milestone_log), never renumbered/inserted milestones.
+
+  - id: knowledge
+    paths: ["vuln_res/knowledge/INDEX.md", "vuln_res/knowledge/**/*.md"]
+    authority: medium
+    objects: [evidence, staleness_clock]
+    parser: deferred            # built in phase 1 (sources 1–2)
+    live: false
+    notes: >
+      Documented one-line-per-entry format: `- [title](file.md) — hook
+      (updated: YYYY-MM-DD)`. Entry kinds parsed from the file's own footer
+      (environment / target-status / general) so typing is parsed data.
+
+  - id: sweep_reports
+    paths: ["vuln_res/sweep-reports/INDEX.md", "vuln_res/sweep-reports/findings-index.md",
+            "vuln_res/sweep-reports/exploits-index.md", "vuln_res/sweep-reports/**/*.md"]
+    authority: medium-high
+    objects: [finding, exploit, sweep, evidence]
+    parser: deferred            # built in phase 2 (sources 3–7)
+    live: false
+    notes: >
+      Findings with committed evidence outrank prose claims (triage's own
+      precedent). exploits-index.md carries the disclosure three-outcome model
+      (our_code / upstream / escalate).
+
+  - id: environments_registry
+    paths: ["vuln_res/knowledge/environments/INDEX.md"]
+    authority: high             # within its mirror role, which is read-only forever
+    objects: [environment]
+    parser: deferred            # built in phase 2 (sources 3–7)
+    live: false
+    notes: >
+      Read-only mirror, forever (§3.4): the supervisor's only relationship to
+      this table is reading. Zero rows is the honest 'no environment approved'
+      fact that the phase-coverage map renders as a blocked execute phase.
+
+  - id: project_lifecycle
+    paths: ["projects/0*-*/PROPOSAL.md", "projects/0*-*/**/STATUS*.md"]
+    authority: high
+    objects: [initiative]
+    parser: deferred            # built in phase 2 (sources 3–7)
+    live: false
+    notes: >
+      A project's phase-1 status file may not exist yet; absence means
+      phase = pre-build, recorded as inference-with-provenance, never as fact.
+
+  - id: git_history
+    paths: ["git log --since=<last-run> --name-only"]
+    authority: medium
+    objects: [evidence, event, implication]
+    parser: deferred            # built in phase 2 file-level, sharpened phase 4
+    live: false
+    notes: >
+      Read-only use of git. File-level event stream at phase 2; content-aware
+      joins (fixture/knowledge) at phase 4.
+
+  - id: capability_registry
+    paths: [".claude/agents/*.md", ".claude/skills/*/SKILL.md"]
+    authority: high             # the definitions ARE the trigger/approval contract
+    objects: [capability]
+    parser: deferred            # built in phase 2 (sources 3–7)
+    live: false
+    notes: >
+      Each capability's approval class is parsed from its own documented contract
+      (autonomous / user_gated / gated_plus_1tr), never assigned by the supervisor.
+
+  - id: attack_stix
+    paths: ["<downloaded STIX bundle, release-pinned>"]
+    authority: high             # the pinned release is authoritative for its tables
+    objects: [ttp, technique_surface, sim_scenario]
+    parser: deferred            # built in phase 5
+    live: false
+    notes: >
+      Release-tagged STIX bundle from the mitre/cti GitHub release, pinned with
+      URL + SHA-256 recorded in meta at build time (§2.2 source 8). Re-pinning is
+      inserting a release row and rendering a release-diff into the brief — never
+      a silent refresh (§3.3 A6).
