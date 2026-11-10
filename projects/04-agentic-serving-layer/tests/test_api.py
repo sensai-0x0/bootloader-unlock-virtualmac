@@ -75,6 +75,21 @@ def test_create_session_connects_fake_client(client):
     assert "vulnres" not in session.client.options.mcp_servers
 
 
+def test_create_vuln_research_session_gets_the_other_tool_server(client):
+    # The symmetric check: a vuln-research-track session gets exactly the opposite
+    # tool server, never the bootloader one — the separation holds in both directions.
+    r = client.post("/sessions", json={"track": "vuln-research"}, headers=auth(TOKEN_VULNRES))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["track"] == "vuln-research"
+    session = registry.get(body["session_id"])
+    assert "vulnres" in session.client.options.mcp_servers
+    assert "bootloader" not in session.client.options.mcp_servers
+    # No raw Bash/Read/Write tool is left reachable in either track's context.
+    for builtin in ("Bash", "Read", "Write"):
+        assert builtin in session.client.options.disallowed_tools
+
+
 def test_send_message_maps_sdk_events_onto_the_wire_contract(client):
     from claude_agent_sdk import (
         AssistantMessage,
