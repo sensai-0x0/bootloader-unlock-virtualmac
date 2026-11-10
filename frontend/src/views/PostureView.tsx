@@ -1,8 +1,14 @@
+import { DiffLedger } from "../components/CarbonCopyDiffRow";
+import { Headline } from "../components/Headline";
+import { InvariantsChecklist } from "../components/InvariantsChecklist";
 import { Ledger, LedgerRow } from "../components/Ledger";
 import { Loupe } from "../components/Loupe";
+import { PlanPreview } from "../components/PlanPreview";
 import { PostureConfidenceTick } from "../components/PostureConfidenceTick";
 import { SecurityModeTick } from "../components/SecurityModeTick";
 import { sampleBootState } from "../data/sampleBootState";
+import { samplePlan } from "../data/samplePlan";
+import { sampleReport } from "../data/sampleReport";
 
 /**
  * BootState, per spec/contract-spec.md via ../../design/FEATURE-PLAN.md.
@@ -73,6 +79,17 @@ export function PostureView() {
           />
         ))}
       </Ledger>
+
+      <div className="section-label">plan preview</div>
+      <PlanPreview plan={samplePlan} />
+
+      <div className="section-label">evidence</div>
+      {sampleReport.exitCode !== 0 && (
+        <Headline figure={sampleReport.exitCode} label="exit code — see invariants below" />
+      )}
+      <DiffLedger entries={sampleReport.diff} />
+      <InvariantsChecklist invariants={sampleReport.invariants} />
+      <div className="meta-line">evidence bundle: {sampleReport.evidenceBundlePath}</div>
     </>
   );
 }

@@ -218,12 +218,47 @@ the up-front contract mapping made the component a transcription, not a
 decision. No new judgment call needed, which is itself worth noting: the
 earlier planning work paid for itself here.
 
-## Phase 5 — plan preview + evidence/report viewer (next)
+## Phase 5 — plan preview + evidence/report viewer (done)
 
-`PlannedTransition` (mode-transition rail reusing `StageRule`'s mechanics
-for the `Full ↔ ReducedKexts`/`Full ↔ PermissiveCustomKernel` edges, a
-read-only plan-preview row) and `Report` (carbon-copy diff rows, the
-invariants checklist, the evidence-bundle path via the same reveal-path
-convention as a finding's PoC). Last, because it's the one surface that
-depends on both `BootState` (this phase) and the full invariants list
-existing somewhere typed (it doesn't yet).
+**Shipped:** `PlannedTransition`, `Report`, `InvariantName` (the exact
+eight invariants from `spec/contract-spec.md`), `DiffEntry` added to
+`types.ts`. `PlanPreview` (mode-transition rail + a read-only plan row,
+the human-gate tick borrowing `StatusTick`'s `escalated-to-human` look via
+its new `label` override). `InvariantsChecklist` (held/violated, same
+borrowed grammar — held is `open`'s green, violated is the amber triangle,
+because contract-spec.md's own words for a violation are "routes the
+finding to coordinated disclosure," i.e. exactly what escalated-to-human
+already means everywhere else in this app). `CarbonCopyDiffRow`/`DiffLedger`
+(struck-through old value, fresh new value — "the carbon copy" from
+`../design/AESTHETIC.md`, not a before/after table). `samplePlan.ts`,
+`sampleReport.ts` — the report sample deliberately carries one *violated*
+invariant (`SingleContainerTouched`) rather than a clean verify, because
+that's the case this component exists to render correctly, not the common
+one.
+
+**Reused rather than rebuilt:** generalized `StageRule` to take a `stages`
+prop (it was hardcoded to vuln_res's six pipeline stages) so the same
+component now also draws the `Full`/`ReducedKexts`/`PermissiveCustomKernel`
+rail — one component, two unrelated domains, zero new CSS. Added
+`securityModeAsProfileLabel` (tested) so an `Unknown` origin never lights a
+guessed stage. All three new sections live on the existing `/posture`
+view rather than new dial positions — current state, proposed plan, and
+past verification are one device's continuous story, read top to bottom
+like a ledger, not three separate tabs.
+
+**Verified:** `bun run typecheck` clean, `bun test` — 54/54 pass (14 new),
+`bun run build` bundles clean (11.28 KB CSS), `/posture` smoke-tested via
+curl.
+
+**Judgment — one real bug caught before it shipped:** reused
+`.agents-run` for the evidence-bundle-path line without noticing its CSS
+is scoped `.manifest .agents-run`, not a bare class — it would have
+rendered completely unstyled outside a `.manifest` ancestor. Added a
+proper shared `.meta-line` class instead of reaching for an inline style
+override, which would have fixed the symptom without fixing the actual
+scoping mistake for the next person who reuses `.agents-run` the same way.
+
+**Status:** this closes every feature `../design/FEATURE-PLAN.md` scoped.
+Still not done, by design: wiring any of this to a real `vuln_res/` or
+bputil-eval data source, and the deferred items already flagged along the
+way (the loupe's viewport-edge clipping, the `unmeasured` tier's contrast).

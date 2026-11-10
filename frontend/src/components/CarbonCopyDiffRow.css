@@ -1,0 +1,33 @@
+.diff-ledger {
+  border-top: 1px solid var(--hairline);
+}
+
+.diff-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--font-data);
+  font-size: var(--text-data);
+  align-items: baseline;
+}
+
+/* The carbon copy — a diff is a corrected ledger line, not a before/after
+   table: the old value struck through, the new value written fresh
+   beneath it, the way a handwritten ledger gets corrected without erasing
+   the original entry (../../design/AESTHETIC.md, "the carbon copy"). */
+
+.diff-row .path {
+  color: var(--paper-white-dim);
+}
+
+.diff-row .before {
+  color: var(--paper-white-dim);
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.diff-row .after {
+  color: var(--paper-white);
+}
