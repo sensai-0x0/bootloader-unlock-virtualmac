@@ -3,8 +3,9 @@ id: 2026-11-11-003-license-policy-and-1tr-detection-gap/env-1tr-fallback-detecti
 target: env::detect (src/env.rs:72, fallback branch)
 source: real-data-verification (checked against this project's own real
   `bputil -d` captures, not a hand-typed string)
-status: escalated, not fixed — documented and test-covered instead; needs real research,
-  not a code change, to actually close
+status: escalated, not fixed — documented and test-covered; research now indicates this
+  is likely unresolvable via VM experimentation at all (see "Research update" below),
+  not just "not yet attempted"
 score: n/a — this is a fail-closed functional gap (blocks a future capability), not a
   vulnerability; scoring it as 0 reachability toward overclaiming would misrepresent it,
   so it's left unscored like the other operational entries in this index
@@ -103,3 +104,35 @@ against hasn't been attempted and may not even be possible without real hardware
 
 Verified: `cargo test` 64/64 (up from 63), `cargo clippy --all-targets -- -D warnings`
 clean, `cargo fmt --check` clean, `./scripts/ci_guards.sh` green.
+
+## Research update (2026-11-11, same day, follow-up)
+
+The user asked to pursue the "VM-based research" option above. Before attempting any
+destructive VM experiment, researched the actual mechanism (web search, not guessed) —
+see `vuln_res/knowledge/fallback-recoveryos-is-likely-real-hardware-only.md` for the full
+sourced writeup. Summary of what changes this finding's outlook:
+
+- **Fallback ("ordinary") recoveryOS is a second, physically separate copy of recoveryOS**
+  stored in its own hidden APFS container (`Apple_APFS_Recovery`) on the internal SSD —
+  distinct from the paired Recovery volume in the main boot volume group. Confirmed via
+  Apple's own Platform Security Guide and independently corroborated by Asahi Linux's
+  boot-mode documentation, which uses the same "1TR" vs. "ordinary recoveryOS" vocabulary
+  this project does.
+- **It's triggered by a Boot ROM-level gesture** — a double-press-and-hold of the power
+  button, distinct from the single press that reaches paired/1TR recovery — not a software
+  setting, not something `bputil`, `csrutil`, or any userspace tool exposes a parameter
+  for.
+- **No source found confirms a tart/Virtualization.framework VM can produce this at all.**
+  The closest technical documentation found (for a comparable VM tool, Lume) describes a
+  VM's disk image as holding exactly one macOS+Recovery pairing with one LocalPolicy — no
+  mention of a second, fallback recovery container. Tart's own recovery-boot feature uses
+  Apple's public `VZ` "boot into recovery" API, which is a single mode with no documented
+  way to simulate the hardware-level double-press gesture.
+
+**Conclusion: this is very likely a real-hardware-only distinction, not something a
+disposable VM can be made to produce.** Downgrading this from "needs VM research" to
+"needs real scratch hardware, per `spec/phased-plan.md`'s P3 track — a different, higher-
+risk undertaking than this project's VM work, not attempted here." No VM experiment was
+run — the research above was judged sufficient to avoid a likely-futile and non-trivial
+destructive attempt (corrupting a VM's Recovery container, with no confirmation the VM
+format even has room for the second container being corrupted).

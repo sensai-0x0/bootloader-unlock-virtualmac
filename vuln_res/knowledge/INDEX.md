@@ -13,7 +13,8 @@ here and writes the corresponding file.
 - [build-test-clippy-fmt-clean-2026-11-11](./build-test-clippy-fmt-clean-2026-11-11.md) — build/test/clippy/fmt/guards re-confirmed clean at commit `20da5e6` (updated: 2026-11-11)
 - [contains-pattern-reviewed-2026-11-11](./contains-pattern-reviewed-2026-11-11.md) — suite-wide re-trace of security-relevant `.contains()` flows; no third instance beyond `AUDIT.md`'s two; `posture_confidence` introduces no new text-parsing (updated: 2026-11-11)
 - [cargo-audit-reverified-2026-11-11](./cargo-audit-reverified-2026-11-11.md) — `cargo audit` still clean (1446 advisories); first `cargo deny check` run, license-policy config gap found (not a vulnerability) (updated: 2026-11-11)
+- [fallback-recoveryos-is-likely-real-hardware-only](./fallback-recoveryos-is-likely-real-hardware-only.md) — fallback recoveryOS needs a second physical APFS container + a Boot-ROM double-press gesture; no evidence a VM can produce it (updated: 2026-11-11)
 
-No `environment` entries yet — no disposable VM/container has been created. No
-`target-status` entries for fuzz targets yet — `02-fuzzing-harness-agent.md` hasn't been
-executed.
+One `environment` entry — [vm-sec-research-25d125](./environments/vm-sec-research-25d125.md),
+registered retroactively (predates this suite). No `target-status` entries for fuzz
+targets yet — `02-fuzzing-harness-agent.md` hasn't been executed.

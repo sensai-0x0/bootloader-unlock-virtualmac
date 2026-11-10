@@ -108,3 +108,23 @@ One entry per sweep, ever run. Append, never rewrite history.
   (producing and capturing a confirmed *unpaired* fallback-recovery environment to find an
   actual distinguishing signal) — not something this sweep could resolve by writing more
   code. `AUDIT.md` §1.1 (DER fuzz harness) still needs `cargo-fuzz`, still not attempted.
+
+## 2026-11-11-004-1tr-gap-followup-research
+
+- **Agents run:** one research fork (web search only, no code execution) to answer
+  whether fallback/"ordinary" recoveryOS is reproducible inside a `tart`/Virtualization.framework
+  VM, per the user's request to pursue the gap above
+- **Environment(s):** none executed — this was read-only research, deliberately done
+  *before* attempting any VM experiment, to avoid a likely-futile destructive attempt
+- **Targets covered:** `env-1tr-fallback-detection-confirmed-broken`'s open question
+- **Duration:** well under an hour
+- **New findings:** 0 new findings; **updated** the existing finding's status and added
+  [`fallback-recoveryos-is-likely-real-hardware-only`](../knowledge/fallback-recoveryos-is-likely-real-hardware-only.md)
+  to `knowledge/` — sourced confirmation that fallback recoveryOS is a second, physically
+  separate APFS container triggered by a Boot-ROM-level double-press gesture, with no
+  evidence any VM tooling (including `tart`) can produce it. Also retroactively
+  registered this project's existing `vm-sec-research-25D125` VM in
+  `knowledge/environments/` (it predates this suite and wasn't in the registry).
+- **Blocked on / escalated to human:** the finding is now understood to need real scratch
+  hardware (`spec/phased-plan.md`'s P3 track) to close, not VM research — a decision for
+  the user on whether/when to pursue that, not assumed here.
