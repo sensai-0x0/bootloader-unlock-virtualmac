@@ -629,6 +629,92 @@ here rather than silently resolved in code — every entry cites the phase that 
    a fresh rebuild, on the real store again. The scratch-rebuild diff check
    itself remains correct practice — it just belongs in `/tmp`, never
    against `state/portfolio.db` directly.
+19. *(phase 4, 2026-11-11)* **`owner_gate` was a blanket `'user_gated'` for
+   every project kind at seed time — phase 4's golden run exposed that this
+   couldn't distinguish a software-only project from one that structurally
+   needs 1TR or enrolled fleet hardware, which is exactly backwards from
+   the PROPOSAL's own success metric ("recon is current, fuzzing hasn't
+   started, no fleet project exists yet… recommends project 1"). Content-
+   aware fix in `parse_project_lifecycle` (`classify_owner_gate`): checks
+   each project's own `PROPOSAL.md` text for verbatim markers, in priority
+   order — `enrolled` (case-insensitive) → `user_gated_fleet_hardware`;
+   `1TR` → `user_gated_plus_1tr`; neither → `user_gated` (software-only).
+   Verified against the real text: project 1 matches neither marker,
+   project 2 matches `1TR` (×2) and no `enrolled`, project 3 matches
+   `enrolled` (×8) and one incidental `1TR` mention (about a legitimate 1TR
+   change *it detects*, not a gate on project 3 itself — `enrolled`'s
+   priority over `1TR` resolves that correctly). Reparsed every run
+   (`UPDATE initiatives SET owner_gate = ?`), never a one-time guess; the
+   classification's basis is recorded in `meta` (`owner_gate_basis:<slug>`)
+   rather than overwriting `initiatives.provenance_id`, which would have
+   wrongly re-attributed the row's *other* columns (name/kind/status/
+   proposal_ref) away from their real seed source.
+20. *(phase 4, 2026-11-11)* **Clock anchors now resolve to the most
+   recently asserted matching claim, not whichever parsed first.**
+   `vuln_res/knowledge/INDEX.md` has a real case of this:
+   `build-test-clippy-fmt-clean-2026-11-10` and `-2026-11-11` both match the
+   `knowledge:build-test-clean` clock's anchor substring, and the old
+   `ORDER BY ingested_at LIMIT 1` could anchor to whichever happened to be
+   ingested first in file order rather than the newer re-confirmation.
+   Changed to `ORDER BY asserted_at DESC LIMIT 1` in `seed_clocks`. This
+   only affects a *fresh* seed (clocks are `ON CONFLICT(surface) DO
+   NOTHING` once created) and doesn't change any already-seeded clock's
+   recorded state in the live store — confirmed it doesn't matter for
+   today's actual data either way, since every affected clock is already
+   correctly `invalid` from events postdating even the newer anchor; the
+   fix is about correctness going forward, not a behavior change today.
+21. *(phase 4, 2026-11-11)* **`required_gate` used the most-permissive
+   capability present; corrected to the most-restrictive.** The phase-3
+   golden run's own output caught this: `vulnres_suite` has 3 autonomous
+   capabilities and 4 `user_gated` ones, and the old logic reported `"none
+   (autonomous capability)"` because *an* autonomous capability existed —
+   dishonestly optimistic for an initiative where most of its registered
+   capabilities actually require approval. `tools/supervisor.py`'s
+   `_required_gate` now checks `gated_plus_1tr` → `user_gated` →
+   `autonomous`-only, in that order, before falling back to the
+   initiative's own `owner_gate` (for projects 1–3, which have zero
+   capabilities parsed yet). Score_run #1's stored `recommendations.
+   required_gate` value for `vulnres_suite` (`"none (autonomous
+   capability)"`) is superseded by every score_run from this phase
+   onward — history preserved per §3.2, never edited in place.
+22. *(phase 4, 2026-11-11)* **`v_phase_coverage`'s hardcoded "zero
+   environments"/"(empty)" wording broke the first time it stopped being
+   true.** Between phase 3 and phase 4, a real environment
+   (`vm-sec-research-25d125`, approved for the `vm_sec_research`/bputil-eval
+   track specifically) was registered by a concurrent track's work — the
+   first nonzero `environments` count this view has ever seen. Its notes
+   for `vulnres_suite|execute` and the generic projects-1-3 `execute`
+   branch both hardcoded the word "zero" (or "(empty)") next to an
+   interpolated live count, producing a literal self-contradiction ("zero
+   environments (1)") in the generated brief. Fixed the wording only — the
+   *state* stays `'blocked'` for all four initiatives, confirmed still
+   correct against `environments/SCHEMA.md`'s own rule ("approved_for is
+   scoped, not blanket"): this environment isn't approved for
+   `vulnres_suite`/project 1-3's execute-phase work, so nothing about who's
+   blocked changed, only how honestly the note describes why.
+23. *(phase 4, 2026-11-11)* **Known limitation, flagged rather than fixed
+   under this phase's time budget: `'never'`-state clocks have no
+   transition rule at all.** The same real environment registration (item
+   22) exposed this: `environments:first-registered` is still `state=
+   'never'` in the brief's "Staleness" section even though an environment
+   now genuinely exists — because R1 (`r1-event-invalidates-clock.sql`)
+   only ever flips `state='live'` rows to `'invalid'`; nothing in the
+   current rule set ever moves a clock OUT of `'never'`. The seed comments
+   for these three `never` clocks (`fuzz-targets:first-built`,
+   `environments:first-registered`, `fleet-enrollments:first-list`) were
+   written when "no environment/target/enrollment exists at all" was a
+   permanent structural fact, not a transient one — that assumption just
+   broke for environments specifically. Fixing it properly means a new
+   rule (deciding what a `'never'` clock transitions TO: straight to
+   `'live'` if the new evidence is itself a sufficient anchor, or to
+   `'missing_evidence'` if it only partially satisfies the clock's original
+   condition — this environment satisfies "an environment exists" but not
+   "an environment approved for this surface exists", which argues for the
+   latter) — deliberately deferred rather than rushed in under this
+   phase's scope (brief generator + tickets + the owner_gate/required_gate
+   corrections above), since an under-tested state-transition rule is
+   worse than an honestly-flagged gap. Revisit before any phase that
+   depends on `'never'`-clock transitions behaving correctly.
 
 ---
 
