@@ -24,6 +24,8 @@ files.
 | `tokens.css` | Color, type, spacing custom properties |
 | `shared.css` | Ledger table/row mechanics, severity glyph, status tick, view dial, stage rule |
 | `components.md` | Spec for each custom component and why it exists instead of a default (card, badge, button) |
+| `AESTHETIC.md` | The "neuropunk paper" aesthetic itself — the paper/signal premise, material vocabulary, and interaction grammar everything else here is built from |
+| `FEATURE-PLAN.md` | Maps `spec/contract-spec.md`'s `BootState`/`PlannedTransition`/`Report` contracts onto this design system |
 | `view-1-sweep-findings.html` | Sweep &amp; findings ledger |
 | `view-2-campaign-overview.html` | Campaign / exploit-chain overview |
 
@@ -37,8 +39,9 @@ bunx serve design
 
 ## Design principles
 
-See `components.md` for the component-level spec. At a glance: ledger rows
-instead of cards, hierarchy by hue (paper-white / signal-green /
-signal-green-dim) instead of size, severity as a spatial glyph instead of a
-colored badge, and no `<button>` anywhere — every interaction is a native
-disclosure (`<details>`), checkbox, or anchor styled to not look like one.
+See `AESTHETIC.md` for the aesthetic itself and `components.md` for the
+component-level spec. At a glance: ledger rows instead of cards, hierarchy
+by hue (paper-white / signal-green / signal-green-muted) instead of size,
+severity as a spatial glyph instead of a colored badge, and no `<button>`
+anywhere — every interaction is a native disclosure (`<details>`),
+checkbox, or anchor styled to not look like one.
