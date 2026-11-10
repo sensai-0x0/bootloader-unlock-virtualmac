@@ -14,6 +14,10 @@ Commands (growing one phase at a time):
                    the DB; --self-test exercises the parse-failure path via the
                    flagged mangled fixture (tests/fixtures/)
   render           regenerate state/fused-portfolio.md from the DB
+  score [trigger]  phase-3: deterministic scoring + ranking (BUILD-SPEC §4.3)
+                   over v_score_inputs/q-scoring.sql; idempotent — an
+                   unchanged input set reuses its existing score_run rather
+                   than recording a duplicate (score_runs.inputs_hash UNIQUE)
 
 Never: executes, schedules, or writes outside projects/supervisor-agent/{state,
 briefs,db,ttp,tests}. parsers.py is the only module allowed to read repo sources.
@@ -581,6 +585,121 @@ def cmd_event(kind: str, detail: str, paths: str) -> None:
     print(f"event recorded id={cur.lastrowid} (nothing executed — description only)")
 
 
+# ─── phase-3 scoring run (§4.3) ──────────────────────────────────────────────
+
+SCORING_QUERY_PATH = BASE / "db" / "queries" / "q-scoring.sql"
+
+# Which v_score_inputs factors feed each score component — mirrors
+# q-scoring.sql's pivot exactly, so component_provenance names the real input
+# rows (BUILD-SPEC §3.1: "every component names its input rows") rather than
+# a separate, driftable description of the formula.
+COMPONENT_FACTORS = {
+    "score_staleness": ["clock_live", "clock_invalid", "clock_never", "clock_missing"],
+    "score_blast": ["cap_autonomous", "cap_gated"],
+    "score_readiness": ["cap_autonomous", "cap_gated", "environments_registered"],
+    "score_precedent": ["finding_count", "finding_avg_score"],
+}
+
+
+def canonical_score_inputs(conn) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT initiative_id, factor, value, facts_ref FROM v_score_inputs "
+        "ORDER BY initiative_id, factor"
+    ).fetchall()
+
+
+def score_inputs_hash(rows: list[sqlite3.Row]) -> str:
+    canon = json.dumps(
+        [[r["initiative_id"], r["factor"], r["value"], r["facts_ref"]] for r in rows],
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canon.encode()).hexdigest()
+
+
+def _required_gate(approval_classes: set[str]) -> str:
+    if "autonomous" in approval_classes:
+        return "none (autonomous capability)"
+    if "gated_plus_1tr" in approval_classes:
+        return "user approval + 1TR owner presence"
+    if "user_gated" in approval_classes:
+        return "user approval"
+    return "no dispatchable capability registered"
+
+
+def run_score(trigger: str = "manual") -> int:
+    conn = connect()
+    apply_ddl(conn)
+
+    rows = canonical_score_inputs(conn)
+    h = score_inputs_hash(rows)
+
+    existing = conn.execute(
+        "SELECT id, computed_at FROM score_runs WHERE inputs_hash = ?", (h,)
+    ).fetchone()
+    if existing:
+        recs = conn.execute(
+            "SELECT rank, initiative_id, score_total FROM recommendations "
+            "WHERE score_run_id = ? ORDER BY rank", (existing["id"],)
+        ).fetchall()
+        print(json.dumps({
+            "score_run_id": existing["id"], "reused": True, "inputs_hash": h,
+            "computed_at": existing["computed_at"],
+            "ranking": [dict(r) for r in recs],
+        }, indent=2))
+        conn.close()
+        return 0
+
+    by_initiative: dict[int, dict[str, dict]] = {}
+    for r in rows:
+        by_initiative.setdefault(r["initiative_id"], {})[r["factor"]] = {
+            "value": r["value"], "facts_ref": r["facts_ref"],
+        }
+
+    scored = conn.execute(SCORING_QUERY_PATH.read_text()).fetchall()
+
+    cap_rows = conn.execute(
+        "SELECT suite AS initiative_id, approval_class FROM capabilities"
+    ).fetchall()
+    gates: dict[int, set[str]] = {}
+    for r in cap_rows:
+        gates.setdefault(r["initiative_id"], set()).add(r["approval_class"])
+
+    now = utcnow()
+    cur = conn.execute(
+        "INSERT INTO score_runs(computed_at, inputs_hash) VALUES (?, ?)", (now, h))
+    run_id = cur.lastrowid
+
+    ranking = []
+    for r in scored:
+        iid = r["initiative_id"]
+        required_gate = _required_gate(gates.get(iid, set()))
+        provenance = {
+            comp: {
+                f: by_initiative.get(iid, {}).get(
+                    f, {"value": 0, "facts_ref": "absent for this initiative"})
+                for f in factors
+            }
+            for comp, factors in COMPONENT_FACTORS.items()
+        }
+        conn.execute(
+            "INSERT INTO recommendations(score_run_id, rank, initiative_id, "
+            "capability_id, score_total, score_staleness, score_blast, "
+            "score_readiness, score_precedent, required_gate, "
+            "component_provenance) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)",
+            (run_id, r["rnk"], iid, r["score_total"], r["score_staleness"],
+             r["score_blast"], r["score_readiness"], r["score_precedent"],
+             required_gate, json.dumps(provenance, sort_keys=True)))
+        ranking.append({"rank": r["rnk"], "initiative_id": iid,
+                        "score_total": r["score_total"], "required_gate": required_gate})
+
+    conn.commit()
+    checkpoint(conn)
+    print(json.dumps({"score_run_id": run_id, "reused": False, "inputs_hash": h,
+                      "computed_at": now, "ranking": ranking}, indent=2))
+    conn.close()
+    return 0
+
+
 def add_provenance(conn, source_ref, source_type, source_sha, note=None):
     cur = conn.execute(
         "INSERT INTO provenance(source_ref, source_sha, source_type, note) "
@@ -626,6 +745,8 @@ def main(argv: list[str]) -> int:
         write_mirrors(conn)
         conn.close()
         print("fused view regenerated")
+    elif cmd == "score":
+        return run_score(rest[0] if rest else "manual")
     else:
         print(f"unknown command: {cmd}", file=sys.stderr)
         return 2

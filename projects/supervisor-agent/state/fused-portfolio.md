@@ -6,7 +6,7 @@ database is the single source of truth; this mirror is a view). Never
 edited by hand; a divergence would be a `sync_violations` row and the
 database wins every such fight.
 
-Regenerated: 2026-11-10T16:02:44Z
+Regenerated: 2026-11-10T16:40:11Z
 
 ## Initiatives
 
@@ -62,7 +62,7 @@ Regenerated: 2026-11-10T16:02:44Z
 
 | kind | rows |
 |---|---|
-| commit_event | 33 |
+| commit_event | 42 |
 | finding | 5 |
 | knowledge | 4 |
 | milestone | 10 |

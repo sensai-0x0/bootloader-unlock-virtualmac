@@ -1,0 +1,30 @@
+table_name                 rows  map_family                                                              
+-------------------------  ----  ------------------------------------------------------------------------
+audit_runs                 4     supervisor own outputs (§3.4)                                           
+cadence_reports            0     cadence rollups (§3.4)                                                  
+capabilities               7     the 6 stage agents + orchestrator + skills (§3.4)                       
+claim_anchors              4     knowledge claim chronology (phase-2 build-time amendment)               
+clock_invalidation_events  5     computed implication history (§3.2)                                     
+contradictions             6     corrections-as-rows (§3.2)                                              
+decision_log               5     supervisor backbone / own outputs (§3.4)                                
+environments               0     environment registry (§3.4) — EMPTY = no approved environment           
+events                     43    git event stream (§3.4 source 6)                                        
+evidence                   64    durable knowledge entries + sweep summaries (§3.4)                      
+exploits                   0     weaponized/developed exploits (§3.4) — EMPTY by construction            
+findings                   5     individual findings (§3.4)                                              
+fleet_enrollments          0     fleet enrollment list (§3.4) — EMPTY, project 3 pre-build               
+fuzz_targets               0     fuzz targets (§3.4) — EMPTY until project 1 builds its first            
+implications               5     generalized effect rows projected from clock invalidations (R3, phase 3)
+initiatives                6     portfolio goal + projects 1–3 defs (§3.4)                               
+links                      16    object/link definitions (ontology/SCHEMA.md)                            
+meta                       4     supervisor backbone / goal peg (§3.4)                                   
+milestone_log              10    milestone dated log / Next up (§3.4)                                    
+milestones                 11    milestone status (§3.4)                                                 
+parse_failures             0     honest-degradation records (§2.2)                                       
+provenance                 150   supervisor backbone (§3.1)                                              
+recommendations            6     ranked decision-brief lines (§3.1 phase 3) — brief_id NULL until phase 4
+runs                       3     supervisor backbone / own outputs (§3.4)                                
+schedules                  0     approved standing schedules (§3.4) — EMPTY: approval is a user act      
+score_runs                 1     deterministic scoring anchors (§3.1 phase 3)                            
+staleness_clocks           8     staleness clocks (§3.1)                                                 
+sweeps                     3     sweep programs run so far (§3.4)                                        
