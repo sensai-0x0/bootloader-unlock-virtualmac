@@ -386,6 +386,13 @@ CREATE TABLE IF NOT EXISTS implications (
 );
 CREATE INDEX IF NOT EXISTS idx_implications_event ON implications(event_id);
 
+-- v_phase_coverage (phase 4 wording fix — matches migration 0006, §3.5 item
+-- 22: a real environment got registered between phase 3 and 4; its two
+-- notes hardcoded the word "zero"/"(empty)" and now print a literal
+-- self-contradiction. The STATE stays 'blocked' — per environments/
+-- SCHEMA.md's own rule ("approved_for is scoped, not blanket"), the one
+-- registered environment isn't approved for any of these four initiatives'
+-- execute-phase work — only the wording changed.)
 CREATE VIEW IF NOT EXISTS v_phase_coverage AS
 SELECT
     i.id                                         AS initiative_id,
@@ -426,8 +433,10 @@ SELECT
       WHEN 'vulnres_suite|build'
         THEN 'clean-as-of knowledge claims are contradictions R2 rows 1–6 (sweep 2026-11-11-001 postdate); clocks knowledge:* [source: staleness_clocks + contradictions]'
       WHEN 'vulnres_suite|execute'
-        THEN 'environments rows = ' || (SELECT count(*) FROM environments) ||
-             ' → execute phase structurally blocked; §4.2 state fact [source: environments registry (empty)]'
+        THEN (SELECT count(*) FROM environments) ||
+             ' environment(s) registered, none approved for vulnres_suite''s execute-phase work ' ||
+             '(registry rule: approved_for is scoped, not blanket) → structurally blocked; §4.2 state fact ' ||
+             '[source: environments registry]'
       WHEN 'vulnres_suite|triage-learn'
         THEN 'findings parsed: ' || (SELECT count(*) FROM findings) ||
              ' with dispositions [source: findings table + sweep-reports/findings-index.md]'
@@ -464,9 +473,11 @@ SELECT
         THEN 'decision_log + markdown mirrors live; briefs ship with phase 4 [source: state/ mirrors]'
       ELSE
         CASE WHEN ph.phase = 'execute'
-             THEN 'pre-build; execute blocked: zero environments (' ||
-                  (SELECT count(*) FROM environments) || ') + ' || i.owner_gate ||
-                  ' [source: §3.4 map + owner_gate]'
+             THEN 'pre-build; execute blocked: ' ||
+                  (SELECT count(*) FROM environments) ||
+                  ' environment(s) registered, none approved for this initiative''s execute-phase work; owner_gate=' ||
+                  COALESCE(i.owner_gate, 'NULL') ||
+                  ' [source: §3.4 map + environments registry + owner_gate]'
              ELSE 'pre-build: no phase artifacts of its own yet [source: initiatives.status + milestones FK counts = ' ||
                   (SELECT count(*) FROM milestones m WHERE m.initiative_id = i.id) ||
                   ']' END
@@ -475,6 +486,8 @@ FROM initiatives i
 CROSS JOIN (SELECT 'recon' AS phase UNION ALL SELECT 'build' UNION ALL SELECT 'execute'
             UNION ALL SELECT 'triage-learn' UNION ALL SELECT 'persist-report') AS ph;
 
+-- v_score_inputs (phase 4 redefinition — matches migration 0006; see that
+-- file's header for why owner_gate_set/hw_gate_present were added).
 CREATE VIEW IF NOT EXISTS v_score_inputs AS
 WITH clocks AS (
     SELECT initiative_id,
@@ -512,7 +525,9 @@ factors(factor, facts_ref) AS (
       ('cap_gated',               'capabilities.approval_class IN (user_gated,gated_plus_1tr)'),
       ('finding_count',           'findings via evidence.kind=finding'),
       ('finding_avg_score',       'avg(CAST(findings.score AS REAL))'),
-      ('environments_registered','count(*) FROM environments (global readiness gate, §4.2)')
+      ('environments_registered','count(*) FROM environments (global readiness gate, §4.2)'),
+      ('owner_gate_set',          'initiatives.owner_gate IS NOT NULL (projects 1-3 only)'),
+      ('hw_gate_present',         'initiatives.owner_gate IN (user_gated_plus_1tr,user_gated_fleet_hardware)')
 )
 SELECT
     i.id AS initiative_id,
@@ -527,6 +542,10 @@ SELECT
       WHEN 'finding_count'            THEN COALESCE(fn.finding_count, 0)
       WHEN 'finding_avg_score'        THEN COALESCE(fn.finding_avg_score, 0.0)
       WHEN 'environments_registered'  THEN (SELECT count(*) FROM environments)
+      WHEN 'owner_gate_set'           THEN CASE WHEN i.owner_gate IS NOT NULL THEN 1 ELSE 0 END
+      WHEN 'hw_gate_present'          THEN CASE WHEN i.owner_gate IN
+                                              ('user_gated_plus_1tr', 'user_gated_fleet_hardware')
+                                            THEN 1 ELSE 0 END
     END AS value,
     f.facts_ref
 FROM initiatives i
@@ -534,3 +553,29 @@ CROSS JOIN factors f
 LEFT JOIN clocks c  ON c.initiative_id = i.id
 LEFT JOIN caps   cp ON cp.initiative_id = i.id
 LEFT JOIN finds  fn ON fn.initiative_id = i.id;
+
+-- ─── phase 4 (cumulative snapshot continuation — matches migration 0006) ────
+-- §3.1 "Human outputs"
+
+CREATE TABLE IF NOT EXISTS briefs (
+    id            INTEGER PRIMARY KEY,
+    path          TEXT NOT NULL UNIQUE,
+    created_at    TEXT NOT NULL,
+    run_id        INTEGER NULL REFERENCES score_runs(id),
+    do_next_top3  TEXT NOT NULL,
+    needs_human   TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS dispatch_tickets (
+    id                INTEGER PRIMARY KEY,
+    brief_id          INTEGER NOT NULL REFERENCES briefs(id),
+    capability_id     INTEGER NULL REFERENCES capabilities(id),
+    scope_invariants  TEXT NOT NULL,
+    required_gate     TEXT NOT NULL,
+    approval_status   TEXT NOT NULL DEFAULT 'pending'
+                      CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+    approved_by       TEXT NULL,
+    approved_at       TEXT NULL,
+    executed_at       TEXT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dispatch_tickets_brief ON dispatch_tickets(brief_id);
