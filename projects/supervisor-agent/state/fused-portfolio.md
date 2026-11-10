@@ -6,15 +6,15 @@ database is the single source of truth; this mirror is a view). Never
 edited by hand; a divergence would be a `sync_violations` row and the
 database wins every such fight.
 
-Regenerated: 2026-11-10T16:40:11Z
+Regenerated: 2026-11-10T22:02:35Z
 
 ## Initiatives
 
 | slug | kind | status | owner_gate | proposal_ref |
 |---|---|---|---|---|
 | project1_fuzz | project1_fuzz | pre-build | user_gated | projects/01-continuous-fuzz-bug-hunter/PROPOSAL.md |
-| project2_mutation | project2_mutation | pre-build | user_gated | projects/02-gated-mutation-engine/PROPOSAL.md |
-| project3_drift | project3_drift | pre-build | user_gated | projects/03-fleet-drift-watch/PROPOSAL.md |
+| project2_mutation | project2_mutation | pre-build | user_gated_plus_1tr | projects/02-gated-mutation-engine/PROPOSAL.md |
+| project3_drift | project3_drift | pre-build | user_gated_fleet_hardware | projects/03-fleet-drift-watch/PROPOSAL.md |
 | supervisor | supervisor | pre-build | — | projects/supervisor-agent/PROPOSAL.md |
 | vm_sec_research | vm_sec_research | active | — | progress/goal.md |
 | vulnres_suite | vulnres_suite | active | — | vuln_res/README.md |
@@ -62,11 +62,11 @@ Regenerated: 2026-11-10T16:40:11Z
 
 | kind | rows |
 |---|---|
-| commit_event | 42 |
-| finding | 5 |
-| knowledge | 4 |
+| commit_event | 53 |
+| finding | 7 |
+| knowledge | 8 |
 | milestone | 10 |
-| sweep_summary | 3 |
+| sweep_summary | 6 |
 
 ## Links
 
@@ -84,6 +84,9 @@ Regenerated: 2026-11-10T16:40:11Z
 | 2026-11-10-001-recon-verification | recon | 2026-11-10 | 2 — [`ssv-enabled-contains-whole-blob`](./2026-11-10-001-recon-verification/ssv- |
 | 2026-11-10-002-fallback-and-audit | recon | 2026-11-10 | 0 (closed/root-caused the existing `agent-registry-not-live-this-session` |
 | 2026-11-11-001-host-independent-parsing-hardening | recon | 2026-11-11 | 3 — [`security-mode-full-contains-whole-blob`](./2026-11-11-001-host-independent |
+| 2026-11-11-002-posture-confidence-recon | recon | 2026-11-11 | 1 — |
+| 2026-11-11-003-license-policy-and-1tr-detection-gap | recon | 2026-11-11 | 1 open, 1 fixed — |
+| 2026-11-11-004-1tr-gap-followup-research | recon | 2026-11-11 | 0 new findings; **updated** the existing finding's status and added |
 
 ## Findings (verbatim from the cross-sweep index)
 
@@ -91,6 +94,8 @@ Regenerated: 2026-11-10T16:40:11Z
 |---|---|---|
 | vuln_res/sweep-reports/findings-index.md#agent-registry-not-live-this-session | n/a (operational) | root-caused; harness feedback filed; working fallback documented |
 | vuln_res/sweep-reports/findings-index.md#ci-guards-regex-boundary-gaps | n/a (operational) | fixed, self-test corpus added |
+| vuln_res/sweep-reports/findings-index.md#env-1tr-fallback-detection-confirmed-broken | n/a (fail-closed functional gap, not a vuln) | **open, needs real hardware** — research confirms fallback recoveryOS is very likely a real-hardware-only concept (second physical APFS container + Boot-ROM gesture); not resolvable via VM experimentation |
+| vuln_res/sweep-reports/findings-index.md#posture-confidence-missing-from-diff | 6 (3×1×2) | fixed, one new regression test |
 | vuln_res/sweep-reports/findings-index.md#security-mode-full-contains-whole-blob | 9 (3×1×3) | fixed, confirmed against real VM-captured `bputil -d` output |
 | vuln_res/sweep-reports/findings-index.md#ssv-enabled-contains-whole-blob | 9 (3×1×3) | fixed (committed) |
 | vuln_res/sweep-reports/findings-index.md#verify-baseline-no-size-cap | 2 (1×1×2) | fixed |
@@ -136,4 +141,7 @@ Regenerated: 2026-11-10T16:40:11Z
 - [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[build-test-clippy-fmt-clean-2026-11-10](./build-test-clippy-fmt-clean-2026-11-10.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#verify-baseline-no-size-cap] (score 2, "fixed") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
 - [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[command-enum-name-collision-tool-note](./command-enum-name-collision-tool-note.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#verify-baseline-no-size-cap] (score 2, "fixed") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
 - [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[cargo-audit-cargo-deny-not-installed](./cargo-audit-cargo-deny-not-installed.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#verify-baseline-no-size-cap] (score 2, "fixed") recorded by sweep 2026-11-11-001-host-independent-parsing-hardening (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[build-test-clippy-fmt-clean-2026-11-10](./build-test-clippy-fmt-clean-2026-11-10.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#posture-confidence-missing-from-diff] (score 6, "fixed, one new regression test") recorded by sweep 2026-11-11-002-posture-confidence-recon (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[command-enum-name-collision-tool-note](./command-enum-name-collision-tool-note.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#posture-confidence-missing-from-diff] (score 6, "fixed, one new regression test") recorded by sweep 2026-11-11-002-posture-confidence-recon (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
+- [R2] R2: currency claim [vuln_res/knowledge/INDEX.md#-[cargo-audit-cargo-deny-not-installed](./cargo-audit-cargo-deny-not-installed.md)] (asserted 2026-11-10) vs finding [vuln_res/sweep-reports/findings-index.md#posture-confidence-missing-from-diff] (score 6, "fixed, one new regression test") recorded by sweep 2026-11-11-002-posture-confidence-recon (2026-11-11) — the claim loses; nothing deleted, the loser is marked here
 

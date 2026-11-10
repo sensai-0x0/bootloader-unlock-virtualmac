@@ -18,6 +18,10 @@ Commands (growing one phase at a time):
                    over v_score_inputs/q-scoring.sql; idempotent — an
                    unchanged input set reuses its existing score_run rather
                    than recording a duplicate (score_runs.inputs_hash UNIQUE)
+  brief [score_run_id]
+                   phase-4: generate a decision brief (briefs/*.md) + dispatch
+                   tickets from the given score_run (default: the latest);
+                   see tools/brief.py
 
 Never: executes, schedules, or writes outside projects/supervisor-agent/{state,
 briefs,db,ttp,tests}. parsers.py is the only module allowed to read repo sources.
@@ -616,13 +620,29 @@ def score_inputs_hash(rows: list[sqlite3.Row]) -> str:
     return hashlib.sha256(canon.encode()).hexdigest()
 
 
-def _required_gate(approval_classes: set[str]) -> str:
-    if "autonomous" in approval_classes:
-        return "none (autonomous capability)"
+def _required_gate(approval_classes: set[str], owner_gate: str | None) -> str:
+    """Most-restrictive-present, never most-permissive (phase 4, §3.5 item
+    21): an initiative with a mix of autonomous and user_gated capabilities
+    (vulnres_suite: 3 autonomous, 4 user_gated, 0 gated_plus_1tr) is NOT
+    "none" just because some of its capabilities are autonomous — a brief
+    claiming no gate is needed, when most of the initiative's registered
+    capabilities require one, would be the dishonest-optimistic mistake this
+    spec repeatedly rejects elsewhere. Falls back to the initiative's own
+    owner_gate (content-aware classification, parse_project_lifecycle) only
+    when it has no registered capabilities at all — true for projects 1-3,
+    still pre-build."""
     if "gated_plus_1tr" in approval_classes:
         return "user approval + 1TR owner presence"
     if "user_gated" in approval_classes:
         return "user approval"
+    if "autonomous" in approval_classes:
+        return "none (every registered capability is autonomous)"
+    if owner_gate == "user_gated_plus_1tr":
+        return "user approval + 1TR owner presence (hardware round trip required to validate)"
+    if owner_gate == "user_gated_fleet_hardware":
+        return "user approval + enrolled fleet hardware (real owned Macs required)"
+    if owner_gate == "user_gated":
+        return "user approval to begin (software-only — no hardware/1TR/fleet dependency)"
     return "no dispatchable capability registered"
 
 
@@ -664,6 +684,9 @@ def run_score(trigger: str = "manual") -> int:
     for r in cap_rows:
         gates.setdefault(r["initiative_id"], set()).add(r["approval_class"])
 
+    owner_gates = {r["id"]: r["owner_gate"] for r in conn.execute(
+        "SELECT id, owner_gate FROM initiatives")}
+
     now = utcnow()
     cur = conn.execute(
         "INSERT INTO score_runs(computed_at, inputs_hash) VALUES (?, ?)", (now, h))
@@ -672,7 +695,7 @@ def run_score(trigger: str = "manual") -> int:
     ranking = []
     for r in scored:
         iid = r["initiative_id"]
-        required_gate = _required_gate(gates.get(iid, set()))
+        required_gate = _required_gate(gates.get(iid, set()), owner_gates.get(iid))
         provenance = {
             comp: {
                 f: by_initiative.get(iid, {}).get(
@@ -747,6 +770,10 @@ def main(argv: list[str]) -> int:
         print("fused view regenerated")
     elif cmd == "score":
         return run_score(rest[0] if rest else "manual")
+    elif cmd == "brief":
+        import brief  # local import: same lazy pattern as parsers (avoids
+        # a circular import, since brief.py imports back from this module)
+        return brief.cmd_brief(int(rest[0]) if rest else None)
     else:
         print(f"unknown command: {cmd}", file=sys.stderr)
         return 2

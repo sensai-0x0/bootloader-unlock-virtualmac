@@ -13,7 +13,13 @@
 --     gate? An autonomous capability with live staleness work to react to
 --     scores highest; a gated capability with zero registered environments
 --     (the one hard blocker this portfolio currently has) scores honestly
---     low rather than pretending readiness it doesn't have.
+--     low rather than pretending readiness it doesn't have. For a project
+--     with no capabilities registered yet (1-3, pre-build), owner_gate_set/
+--     hw_gate_present (§3.5 item 19) distinguish a software-only project
+--     (no 1TR/fleet dependency — can genuinely start now) from one that
+--     structurally needs 1TR or enrolled fleet hardware the user hasn't
+--     engaged yet — the PROPOSAL's own "recon is current, fuzzing hasn't
+--     started... recommends project 1" success metric, made computational.
 --   score_precedent — established track record: initiatives with real,
 --     scored findings outrank ones with none; no findings is the honest
 --     baseline, not a zero that would out-rank a bad track record.
@@ -32,7 +38,9 @@ WITH pivot AS (
         max(CASE WHEN factor = 'cap_gated'                THEN value END) AS cap_gated,
         max(CASE WHEN factor = 'finding_count'            THEN value END) AS finding_count,
         max(CASE WHEN factor = 'finding_avg_score'        THEN value END) AS finding_avg_score,
-        max(CASE WHEN factor = 'environments_registered'  THEN value END) AS environments_registered
+        max(CASE WHEN factor = 'environments_registered'  THEN value END) AS environments_registered,
+        max(CASE WHEN factor = 'owner_gate_set'            THEN value END) AS owner_gate_set,
+        max(CASE WHEN factor = 'hw_gate_present'           THEN value END) AS hw_gate_present
     FROM v_score_inputs
     GROUP BY initiative_id
 ),
@@ -55,6 +63,10 @@ scored AS (
                 THEN 1
             WHEN COALESCE(p.cap_gated, 0) > 0
                 THEN 4
+            WHEN COALESCE(p.owner_gate_set, 0) = 1 AND COALESCE(p.hw_gate_present, 0) = 0
+                THEN 7
+            WHEN COALESCE(p.owner_gate_set, 0) = 1 AND COALESCE(p.hw_gate_present, 0) = 1
+                THEN 2
             ELSE 2
         END                                                    AS score_readiness,
         CASE
