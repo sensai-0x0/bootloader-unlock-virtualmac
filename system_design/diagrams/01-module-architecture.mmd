@@ -1,0 +1,26 @@
+graph TD
+    CLI["main.rs CLI"] --> ENV["env.rs: detect macOS vs 1TR"]
+    CLI --> COLLECT["state/collect.rs: read-only BootState capture"]
+    CLI --> PLAN["plan.rs: diff BootState vs TargetProfile"]
+    CLI --> REPORT["report.rs: hash-chained evidence bundle"]
+    CLI --> VERIFY["verify.rs: P3 stub"]
+    CLI --> AUTH["authorize.rs: P3 stub"]
+    CLI --> EXEC["execute.rs: P3 stub"]
+
+    COLLECT --> STATE["state/mod.rs: BootState + ValidBootState"]
+    COLLECT --> IMG4["state/img4.rs: IMG4 manifest parser - pure Rust"]
+    COLLECT --> DIFF["state/diff.rs: structured BootState diff"]
+    PLAN --> DIFF
+    PLAN --> STATE
+    VERIFY --> DIFF
+    REPORT --> STATE
+
+    ENV --> WRAP["wrapper.rs: ONLY place std::process::Command runs"]
+    COLLECT --> WRAP
+    AUTH -. "P3: no logic yet" .-> WRAP
+    EXEC -. "P3: no logic yet" .-> WRAP
+
+    WRAP --> TOOLS["Apple tools: bputil, kmutil, csrutil, diskutil, system_profiler"]
+
+    GUARD["scripts/ci_guards.sh"] -. "greps for violations" .-> WRAP
+    GUARD -. "no direct subprocess + no credential field" .-> CLI

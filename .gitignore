@@ -7,3 +7,4 @@ Cargo.lock.bak
 # fixtures derived from this work belong in tests/fixtures/.
 /*.ipsw
 /research/
+.sensai/
