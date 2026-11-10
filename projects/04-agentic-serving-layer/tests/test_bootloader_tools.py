@@ -73,8 +73,9 @@ async def test_verify_with_valid_baseline_writes_file_and_runs(bootloader_sessio
     baseline_file = bootloader_session.workspace_path / "work" / "baseline.json"
     assert baseline_file.exists()
     transcript = read_transcript(bootloader_session)
-    assert transcript[-1]["data"]["argv"][-2] == "--json"
+    assert transcript[-1]["data"]["argv"][-1] == "--json"
     assert "verify" in transcript[-1]["data"]["argv"]
+    assert str(baseline_file) in transcript[-1]["data"]["argv"]
 
 
 @pytest.mark.asyncio
