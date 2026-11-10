@@ -15,6 +15,12 @@ and what's been deliberately left as an open gap).
 | [phase-5.md](phase-5.md) | P5 Hardening + release — **not started** | Human (needs the hardware matrix) |
 | [research-environment.md](research-environment.md) | Prep for P5's hardware-matrix coverage: simulating an M6-generation Mac from an IPSW you already have, without owning the hardware | Human (needs the IPSW file) |
 | [extension-local-model-hosting.md](extension-local-model-hosting.md) | Proposed, not started — self-contained plan for hobbyist local-model-hosting relevance, scoped entirely to this repository; see `../reports/m2-bootloader-unlock-technicians-guide.md` for the companion hobbyist-facing guide | Human |
+| [tool-analysis-parent.md](tool-analysis-parent.md) | Evaluator pack **parent** — orchestrator for the agent-readable decomposition of `archive/tool-analysis-offensive-threat-intel-defence.md` | Agent (evaluator) |
+| [high-offensive.md](high-offensive.md) | Theme A — capability audit of §1–§4 claims (tool identity, architecture, functional inventory, vuln_res tradecraft) | Agent (evaluator) |
+| [gaps-roadmap.md](gaps-roadmap.md) | Theme C — budget-weighted, cheapest-unlocks-most ranking of the §6 gaps | Agent (evaluator) |
+| [threat-intel-defence.md](threat-intel-defence.md) | Theme B — §7 CTI mapping critique + guardrail stress-test of every ranked proposal | Agent (evaluator) |
+| [evaluator-decisions.md](evaluator-decisions.md) | Theme D — §8.3 interop recommendation + §8.5 build-next / research-next / don't-build decision request | Agent (evaluator) |
+| [archive/](archive/) | Processed documents kept as the audit trail for the packs above (the original analysis brief lives here) | — |
 
 **Why P3 onward can't just be assigned to an agent the same way P0–P2 were:** those phases
 mutate a real Mac's boot security policy, which `spec/build-spec.md`'s golden rules require
