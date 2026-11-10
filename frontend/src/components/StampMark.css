@@ -1,0 +1,17 @@
+.stamp {
+  display: inline-block;
+  margin-left: var(--space-2);
+  vertical-align: middle;
+  transform: rotate(-4deg);
+  opacity: 0.85;
+}
+
+.stamp rect {
+  fill: none;
+}
+
+.stamp text {
+  font-family: var(--font-structural);
+  font-size: 7px;
+  letter-spacing: 0.03em;
+}

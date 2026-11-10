@@ -48,15 +48,56 @@ genuinely separate interaction idea with its own edge cases (hover timing,
 drag math, animation performance), and bundling them risks a phase that's
 too large to judge honestly before committing. Revised:
 
-## Phase 1 — stamp mark + phosphor trace (next)
+## Phase 1 — stamp mark + phosphor trace (done)
 
-The two lowest-risk, highest-payoff components from `../design/AESTHETIC.md`'s
-catalog: a stamp mark for `fixed`/`disclosed-upstream` rows (static SVG/CSS,
-no interaction, no state — purely visual, so it's a good next step after an
-all-logic Phase 0) and a phosphor trace sparkline for sweep cadence in the
-headline block (a drawn SVG line, not a filled bar/area per the aesthetic's
-own rule). Both are presentational and testable by snapshotting their
-generated path/attributes, not by simulating interaction.
+**Shipped:** `StampMark` (hand-perturbed-quadrilateral SVG border, rotated
+-4deg, `currentColor` so it always matches the status text it sits beside —
+wired into `StatusTick` for `fixed`/`disclosed-upstream` only, no new call
+sites needed in either view) and `PhosphorTrace` (a drawn `<polyline>`, no
+fill, with the normalization math pulled out to a pure `src/lib/trace.ts`
+so the zero-range/single-value edge cases are actually tested rather than
+discovered as a rendering glitch). Wired into `SweepFindingsView`'s
+headline, showing findings-per-sweep across the two history entries plus
+the current sweep.
+
+**Verified:** `bun run typecheck` clean, `bun test` — 23/23 pass (9 new:
+`trace.test.ts`'s edge cases, `StampMark.test.tsx`, `StatusTick.test.tsx`'s
+stamp-presence assertions), `bun run build` bundles clean (41 modules, CSS
+grew 6.45 KB → 6.90 KB — the two new components cost under half a KB of
+style).
+
+**Judgment:** keeping `StampMark` colorless (`currentColor`) instead of
+taking its own color prop was the right call — it means `StatusTick`
+stayed a single source of truth for status→color, and the stamp can never
+drift out of sync with the tick/label it sits next to. The one thing I'd
+flag for a future pass: the stamp's hand-perturbed border coordinates are
+hand-authored once, not derived — fine for two label strings today, but if
+a third stamped status is added later, eyeball the border at that label's
+width rather than assuming the same four points still look irregular
+rather than just skewed.
+
+**Revising the plan again:** Phase 2 as originally scoped (loupe + noise
+texture) still depends on data this app doesn't have yet — `Finding` has
+no `confidence` field, so there's nothing honest to drive a noise-as-texture
+treatment with. Splitting that out rather than inventing a fake confidence
+value just to have something to animate.
+
+## Phase 2 — loupe tooltip (next)
+
+Hover-driven magnification for `--font-data` numerals (score, ids,
+timestamps) — doesn't need new data, just interaction-timing decisions
+(show delay, anchor position). Self-contained enough to ship without
+touching the data model.
+
+## Phase 2.5 — confidence field + noise-textured value
+
+Add a `confidence` field to `Finding` (plausibly: mirrors
+`PostureConfidence` from `../design/FEATURE-PLAN.md` —
+`measured`/`untrusted-read`/`unmeasured` — since vuln_res findings already
+carry a `source` field that implies a confidence tier:
+`real-data-verification`/`fuzzer-confirmed` read as more certain than
+`static-analysis`). Only once that exists does the noise-as-texture
+treatment have something real to render instead of an invented value.
 
 ## Phase 2 — loupe tooltip + noise-textured value
 

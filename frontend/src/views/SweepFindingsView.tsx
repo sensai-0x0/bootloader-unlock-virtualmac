@@ -3,12 +3,19 @@ import { Headline } from "../components/Headline";
 import { Ledger, LedgerRow } from "../components/Ledger";
 import { Legend } from "../components/Legend";
 import { ManifestHeader } from "../components/ManifestHeader";
+import { PhosphorTrace } from "../components/PhosphorTrace";
 import { Rail } from "../components/Rail";
 import { SeverityGlyph } from "../components/SeverityGlyph";
 import { StatusTick } from "../components/StatusTick";
 import { currentSweep, knowledgeEntriesRecorded, sweepHistory } from "../data/sampleSweep";
 import type { FindingStatus } from "../data/types";
 import { filterByStatus } from "../lib/filter";
+
+// Oldest first, left to right — sweepHistory itself is newest-first (for the
+// rail list below), so this view reverses it for the trace.
+const traceValues = [...sweepHistory].reverse().map((h) => h.fixedCount).concat(
+  currentSweep.findings.length,
+);
 
 export function SweepFindingsView() {
   const [activeStatuses, setActiveStatuses] = useState<FindingStatus[]>([]);
@@ -24,6 +31,7 @@ export function SweepFindingsView() {
   return (
     <>
       <Headline figure={currentSweep.findings.length} label="findings opened this sweep" />
+      <PhosphorTrace values={traceValues} label="findings per sweep, most recent sweep at the right" />
       <ManifestHeader sweep={currentSweep} />
       <Legend active={activeStatuses} onToggle={toggleStatus} />
       <Ledger variant="findings">
