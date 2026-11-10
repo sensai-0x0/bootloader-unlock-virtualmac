@@ -44,6 +44,49 @@ behind the slow stage's cadence. Keeping them separate, per this folder's `plans
 diagram, is what makes "quickly evaluating vulnerabilities" actually quick for the cheap
 stages while still gating the expensive, sandbox-requiring ones properly.
 
+## How to actually invoke this suite today (subagent-registry workaround)
+
+**Confirmed gap, root-caused 2026-11-10** (see
+`../sweep-reports/2026-11-10-001-recon-verification/agent-registry-not-live-this-session.md`):
+this harness's Agent tool only loads subagent types from the **global, user-level**
+`~/.claude/agents/` directory. Project-level `.claude/agents/*.md` files — the actual
+`vulnres-*` definitions this suite is built from — are never discovered, in *any* project
+under this monorepo, not just this one (`sensai-stack`, `parit-architecture`, and
+`compilar-v0.5` all have the same kind of unused project-level `.claude/agents/`
+directory). This was confirmed by diffing the Agent tool's "available agents" error
+message against `ls ~/.claude/agents/`: they match exactly. It is not a staleness or
+session-restart issue (retested after `/clear` with the files committed — same result),
+and it's been filed as harness feedback. Don't keep retrying `subagent_type:
+"vulnres-*"` expecting a different result until that's actually fixed upstream.
+
+**Until it is, invoke each stage like this instead** — functionally equivalent, and keeps
+the agent definitions themselves project-scoped (they stay as files in *this* repo's
+`.claude/agents/`, never copied into the global directory just to make them callable):
+
+```
+Agent({
+  subagent_type: "general-purpose",
+  description: "<stage name> sweep",
+  prompt: "You are acting as the vulnres-<stage> agent defined at
+    .claude/agents/vulnres-<stage>.md in this repo
+    (/Users/nullzero/Metacogna/the-ant-experiment). Read that file in full and follow it
+    exactly — including its own instruction to read vuln_res/CLAUDE.md first. Then:
+    <the specific task for this sweep, e.g. 'run a fresh recon pass per plan 01'>."
+})
+```
+
+A fresh `general-purpose` agent has no memory of this definition, so the prompt must
+name the exact file path — it reads its own marching orders from disk rather than having
+them injected by the harness, which is the whole workaround. The coordinating session
+(or a `fork` of it, when the stage doesn't need isolation from the current context)
+dispatches this instead of a native `subagent_type`, one stage at a time, following the
+same handoff contract (table above) either way.
+
+`vulnres-orchestrator` itself is just another `.claude/agents/*.md` file under this same
+constraint — "running the orchestrator" today means the coordinating session reads
+`.claude/agents/vulnres-orchestrator.md` directly and dispatches each stage per its logic,
+rather than a single `Agent({subagent_type: "vulnres-orchestrator"})` call doing it.
+
 ## Exit gate for the whole suite
 
 - `01` runs as a CI check and is green (or has tracked, non-blocking findings) on the

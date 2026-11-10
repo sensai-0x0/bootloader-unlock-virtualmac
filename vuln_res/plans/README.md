@@ -95,8 +95,13 @@ the root project's own phased delivery.
 The suite described above is now built, not just planned:
 
 - **Agents:** `../../.claude/agents/vulnres-{recon,fuzz-harness,environment-runner,triage,exploit-dev,disclosure,orchestrator}.md`
-  — one per stage, plus the orchestrator. Invoke `vulnres-orchestrator` for a full sweep,
-  or any single stage agent directly for just that stage.
+  — one per stage, plus the orchestrator. **Native `subagent_type: "vulnres-*"`
+  invocation does not currently work in this harness** (project-level `.claude/agents/`
+  isn't discovered — confirmed bug, see `06-orchestration-and-scheduling.md`'s
+  "How to actually invoke this suite today" for the working fallback and
+  `../sweep-reports/2026-11-10-001-recon-verification/agent-registry-not-live-this-session.md`
+  for the root cause). Use that fallback, not a direct `subagent_type` call, until it's
+  fixed upstream.
 - **Compound knowledge store:** `../knowledge/` (`INDEX.md` + `environments/` registry) —
   durable facts and registered disposable environments, read/written every sweep.
 - **Sweep-reports store:** `../sweep-reports/` — the prototype flat-file storage for

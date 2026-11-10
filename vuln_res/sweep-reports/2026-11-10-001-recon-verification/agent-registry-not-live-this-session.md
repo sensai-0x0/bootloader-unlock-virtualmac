@@ -90,3 +90,26 @@ appear in the available-agents list. So the gap isn't "these are global agents t
 should've been filtered out" — it's "these are correctly-scoped project agents that
 aren't being discovered at all." Feedback already filed via `/feedback` on 2026-11-10;
 no further action pending here unless the user reports it's fixed in a later session.
+
+**Root cause, confirmed 2026-11-10:** the harness's Agent tool only loads subagent types
+from the **global, user-level** `~/.claude/agents/` directory. `ls ~/.claude/agents/`
+returns exactly `api-contract-validator.md`, `bohemian-design-expert.md`,
+`documentation-architect.md`, `error-analyzer-resolver.md`,
+`frontend-design-auditor.md`, `integration-production-specialist.md` — a one-to-one
+match with the Agent tool's "Available agents" error list (minus the harness's own
+always-present built-ins: `claude`, `claude-code-guide`, `Explore`, `general-purpose`,
+`Plan`, `statusline-setup`). Project-level `.claude/agents/*.md` is never scanned at all
+in this environment: besides this repo's seven `vulnres-*` files, three sibling projects
+in the same monorepo (`sensai-stack/.claude/agents/`, `parit-architecture/.claude/agents/`,
+`compilar-v0.5/.claude/agents/`) have their own project-level agent definitions that are
+equally invisible to the Agent tool, regardless of which project's directory a session
+is working in. So this isn't specific to `the-ant-experiment` or to `vulnres-*` — it's a
+general project-level-agent-discovery gap in this harness build.
+
+**Practical workaround adopted (not a fix):** `vulnres-*` agents are invoked via a
+`general-purpose` subagent given a prompt that names the exact `.claude/agents/<name>.md`
+path and tells it to read and follow that file — see
+`../../plans/06-orchestration-and-scheduling.md`'s "How to actually invoke this suite
+today" section. This keeps the agent definitions themselves correctly project-scoped
+(they live only in this repo, never copied into the global directory to work around the
+bug) while still making them actually usable from `vuln_res/`'s pipeline today.
