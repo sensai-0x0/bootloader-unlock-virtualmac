@@ -3,7 +3,7 @@ import { Headline } from "../components/Headline";
 import { Ledger, LedgerRow } from "../components/Ledger";
 import { Legend } from "../components/Legend";
 import { Rail } from "../components/Rail";
-import { StageRule } from "../components/StageRule";
+import { StageRule, VULNRES_STAGES } from "../components/StageRule";
 import { StatusTick } from "../components/StatusTick";
 import { exploits } from "../data/sampleExploits";
 import type { FindingStatus } from "../data/types";
@@ -30,7 +30,7 @@ export function CampaignOverviewView() {
         figure={provenCount}
         label="chains with impact proven, awaiting sign-off"
       />
-      <StageRule activeStages={ACTIVE_STAGES} />
+      <StageRule stages={VULNRES_STAGES} activeStages={ACTIVE_STAGES} />
       <Legend active={activeStatuses} onToggle={toggleStatus} />
       <Ledger variant="exploits">
         {visibleExploits.map((exploit) => (

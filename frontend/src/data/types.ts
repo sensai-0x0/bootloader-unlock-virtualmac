@@ -104,3 +104,47 @@ export interface BootState {
   enrolledObjects: EnrolledObject[];
   otherContainers: OtherContainer[];
 }
+
+/** plan()'s output — always a dry run, never executed (contract-spec.md). */
+export type TargetProfile = "Full" | "ReducedKexts" | "PermissiveCustomKernel";
+
+export interface PlannedTransition {
+  fromMode: SecurityMode;
+  toProfile: TargetProfile;
+  targetVolumeGroup: string;
+  /** Each entry is one command's argv. */
+  commands: string[][];
+  /** Always true for any mutating profile per contract-spec.md's PlannedTransition.requires. */
+  requiresOneTrueRecoveryAndOwnerConfirmation: boolean;
+}
+
+/** The exact eight global invariants from spec/contract-spec.md. */
+export type InvariantName =
+  | "ReadOnlyUnlessGated"
+  | "SingleContainerTouched"
+  | "Reversible"
+  | "NoCredentialHandling"
+  | "SupportedMechanismsOnly"
+  | "MeasuredTruth"
+  | "EvidenceComplete"
+  | "OwnershipConfirmed";
+
+export interface InvariantResult {
+  name: InvariantName;
+  held: boolean;
+}
+
+export interface DiffEntry {
+  path: string;
+  before: string;
+  after: string;
+}
+
+export interface Report {
+  baseline: BootState;
+  result: BootState | null;
+  diff: DiffEntry[];
+  invariants: InvariantResult[];
+  exitCode: number;
+  evidenceBundlePath: string;
+}

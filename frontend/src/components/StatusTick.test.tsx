@@ -20,4 +20,10 @@ describe("StatusTick", () => {
       cleanup();
     }
   });
+
+  test("label overrides the displayed text while keeping status's visual grammar", () => {
+    const { getByText, container } = render(<StatusTick status="escalated-to-human" label="violated" />);
+    expect(getByText("violated")).toBeDefined();
+    expect(container.querySelector('[data-status="escalated-to-human"]')).not.toBeNull();
+  });
 });
