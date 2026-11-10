@@ -1,0 +1,48 @@
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status .tick {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+}
+
+.status[data-status="open"] .tick {
+  background: var(--signal-green);
+}
+.status[data-status="open"] {
+  color: var(--signal-green);
+}
+
+.status[data-status="fixed"] .tick,
+.status[data-status="disclosed-upstream"] .tick {
+  background: transparent;
+  border: 1px solid var(--signal-green-dim);
+}
+.status[data-status="fixed"],
+.status[data-status="disclosed-upstream"] {
+  color: var(--signal-green-muted);
+}
+
+.status[data-status="false-positive"] .tick {
+  background: var(--paper-white-dim);
+  height: 1px;
+  margin-top: 3px;
+}
+.status[data-status="false-positive"] {
+  color: var(--paper-white-dim);
+}
+
+.status[data-status="escalated-to-human"] .tick {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 7px solid var(--amber-flag);
+}
+.status[data-status="escalated-to-human"] {
+  color: var(--amber-flag);
+}

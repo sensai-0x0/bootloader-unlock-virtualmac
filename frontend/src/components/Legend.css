@@ -1,0 +1,35 @@
+.legend {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-micro);
+  flex-wrap: wrap;
+}
+
+.legend-toggle {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.legend label {
+  cursor: pointer;
+  color: var(--paper-white-dim);
+  border-bottom: 1px solid transparent;
+  padding-bottom: 2px;
+}
+
+.legend label:hover {
+  color: var(--paper-white);
+}
+
+.legend-toggle:checked + label {
+  color: var(--paper-white);
+  border-bottom-color: var(--signal-green);
+}
+
+.legend-toggle:focus-visible + label {
+  outline: 1px solid var(--signal-green);
+  outline-offset: 3px;
+}
