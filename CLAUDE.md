@@ -104,6 +104,8 @@ authorize, execute, verify — P3 stubs (module files exist with doc comments; n
 Rules enforced, not just stated:
 - No module calls `std::process` directly outside `wrapper.rs` — `scripts/ci_guards.sh` greps for this and fails the build if violated (tested with a negative case; see the script).
 - No credential-shaped field anywhere — same script, second guard.
+- Every subprocess is a pinned absolute path (`wrapper::ALLOWED_BINARIES`; `sudo`'s target is pinned too) run with a cleared environment (`PATH=/usr/bin:/bin:/usr/sbin:/sbin`, `LC_ALL=C`), a 30s deadline and a 1 MiB output cap — third guard in the same script fails the build on an unlisted call site or a non-absolute entry. Reason: a bare-name `PATH` lookup let a non-root user shadow `/usr/bin/bputil` and forge `Security Mode: Full` (`reports/offensive-robustness-2026-11-11.md`, F1).
+- `verify --baseline` treats the baseline as untrusted input: size cap, `deny_unknown_fields`, exact `schema_version`, the full `validate()` predicate, and refusal (exit 11) if serial/chip/volume group differ from the fresh read. `validate()` also rejects `Full` with SSV disabled (a `bputil`/`csrutil` contradiction). `report --session-id` is restricted to `[A-Za-z0-9_-]{1,64}` and never overwrites an existing bundle.
 - `--json` on `evaluate`/`plan`/`verify`.
 
 ### Deviations from the literal spec text (all due to the missing architecture doc)
@@ -135,7 +137,7 @@ The gate between P2 and P3 is the one to protect most carefully: no mutating cod
 **Current state: P0–P2 implemented; P3 onward deliberately not started.** P3–P5 require a real Mac, a disposable scratch APFS container, and a human physically rebooting into 1TR to enter owner credentials — none of which this agent can do unattended in a terminal session. If asked to "finish the project," that boundary is why `authorize`/`execute`/`verify` remain doc-comment-only stubs: implementing their logic without a way to prove it against a real 1TR round trip would mean shipping untested, safety-critical code, which is worse than not shipping it. Picking the work back up means a human with physical hardware access driving P3's round-trip tests, not more autonomous coding.
 
 What's verified, concretely:
-- `cargo build`, `cargo test` (43 tests), `cargo clippy --all-targets -- -D warnings`, `cargo fmt --check`, and `./scripts/ci_guards.sh` all pass as of this writing.
+- `cargo build`, `cargo test` (81 tests), `cargo clippy --all-targets -- -D warnings`, `cargo fmt --check`, and `./scripts/ci_guards.sh` all pass as of this writing.
 - `cargo run -- evaluate --json` run twice on this real Mac differs **only** in `captured_at` — the literal P1 exit-gate proof, reverified after the `evidence.raw_outputs` scoping fix above.
 - `cargo run -- plan full` on this machine correctly refuses with exit 11 ("current security_mode is Unknown") because there's no cached `sudo` credential to read the real policy — this is the fail-closed path working as designed, not a bug.
 
@@ -153,11 +155,11 @@ cargo test state::collect                       # just the collect-module tests
 cargo clippy --all-targets -- -D warnings       # must be clean; CI treats any warning as a failure
 cargo fmt                                        # apply formatting
 cargo fmt --check                                # CI's check
-./scripts/ci_guards.sh                           # the two textual safety guards (see "Rules enforced" above)
+./scripts/ci_guards.sh                           # the three textual safety guards (see "Rules enforced" above)
 
 cargo run -- evaluate [--json]                   # read-only; works on any Mac, degrades security_mode to Unknown without sudo
 cargo run -- plan <full|reduced-kexts|permissive-custom-kernel> [--json]
-cargo run -- verify --baseline <path-to-evaluate---json-output> [--json]
+cargo run -- verify --baseline <path-to-evaluate---json-output> [--json]   # exit 0 no drift (measured) / 1 drift / 2 inconclusive / 11 bad or foreign baseline
 cargo run -- report [--out-dir <dir>] [--session-id <id>]
 cargo run -- apply   # and `revert`: print a "not implemented (P3/P4)" message and exit non-zero, on purpose
 ```

@@ -50,6 +50,8 @@ pub enum CollectError {
     NoSerial,
     #[error("could not determine SSV status from `csrutil authenticated-root status` (saw: {0:?})")]
     NoSsvStatus(String),
+    #[error("`csrutil authenticated-root status` exited {0}; refusing to trust its output")]
+    SsvReadFailed(i32),
     #[error("collect() built an internally inconsistent BootState: {0}")]
     Invalid(#[from] BootStateError),
 }
@@ -126,6 +128,10 @@ pub fn collect() -> Result<BootState, CollectError> {
 
     // Security-relevant reads: recorded into evidence.raw_outputs.
     let ssv_record = wrapper::run(&["csrutil", "authenticated-root", "status"])?;
+    // A status line printed alongside a failing exit is not a measurement (finding F4).
+    if ssv_record.exit_code != 0 {
+        return Err(CollectError::SsvReadFailed(ssv_record.exit_code));
+    }
     let ssv_enabled = parse_ssv_enabled(&ssv_record.stdout)
         .ok_or_else(|| CollectError::NoSsvStatus(ssv_record.stdout.clone()))?;
     record(&mut raw_outputs, &ssv_record);
@@ -211,10 +217,18 @@ fn extract_serial_masked(system_profiler_output: &str) -> Option<String> {
         .lines()
         .find(|l| l.contains("Serial Number"))?;
     let serial = line.split(':').nth(1)?.trim();
-    if serial.len() < 4 {
+    // Char-based, not byte-sliced: a non-ASCII serial (or a localised line) would otherwise
+    // panic on a UTF-8 boundary (finding F6). Real serials are ASCII alphanumeric; the
+    // redaction placeholders in tests/fixtures/ end in `<...>` and are allowed through only
+    // as printable ASCII.
+    if !serial.chars().all(|c| c.is_ascii_graphic()) {
         return None;
     }
-    Some(serial[serial.len() - 4..].to_string())
+    let chars: Vec<char> = serial.chars().collect();
+    if chars.len() < 4 {
+        return None;
+    }
+    Some(chars[chars.len() - 4..].iter().collect())
 }
 
 /// `   APFS Volume Group:         45C6EEFD-...` from `diskutil info /`.
@@ -261,9 +275,13 @@ fn extract_other_containers(
 /// that had no fail-closed branch at all — this follows the same anchor-to-the-line
 /// discipline `extract_volume_group`/`extract_serial_masked` already use below.
 fn parse_ssv_enabled(csrutil_output: &str) -> Option<bool> {
-    let line = csrutil_output
-        .lines()
-        .find(|l| l.to_lowercase().contains("status"))?;
+    // Anchored on the line's own prefix, not any line containing "status" — a future
+    // banner or warning mentioning "status" must not be read as the answer (finding F7).
+    let line = csrutil_output.lines().find(|l| {
+        l.trim_start()
+            .to_lowercase()
+            .starts_with("authenticated root status")
+    })?;
     match line.split(':').nth(1)?.trim().to_lowercase().as_str() {
         "enabled" => Some(true),
         "disabled" => Some(false),
@@ -444,6 +462,19 @@ mod tests {
             parse_ssv_enabled("Authenticated Root status: partially-enabled"),
             None
         );
+    }
+
+    #[test]
+    fn an_earlier_unrelated_status_line_is_not_mistaken_for_the_answer() {
+        let banner_then_answer = "Note: status of SIP is reported separately\n\
+             Authenticated Root status: disabled";
+        assert_eq!(parse_ssv_enabled(banner_then_answer), Some(false));
+    }
+
+    #[test]
+    fn non_ascii_serial_is_rejected_not_panicked_on() {
+        assert_eq!(extract_serial_masked("Serial Number (system): ABCDÉ"), None);
+        assert_eq!(extract_serial_masked("Serial Number (system): ABC"), None);
     }
 
     #[test]

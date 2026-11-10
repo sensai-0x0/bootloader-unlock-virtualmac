@@ -40,6 +40,16 @@ pub fn diff(before: &BootState, after: &BootState) -> Vec<DiffEntry> {
     // this diff silently whenever target_container's other fields happen to still match —
     // exactly the "silent degradation without saying so" failure mode the field was added to
     // prevent. See vuln_res/sweep-reports/ for the finding this closes.
+    //
+    // A build change is either a legitimate update or a downgrade/rollback — either way a
+    // drift worth surfacing, never silently equal (offensive-robustness report, F14).
+    compare!(
+        "host.macos_build",
+        before.host.macos_build,
+        after.host.macos_build
+    );
+    // A drop from Measured to a weaker read is itself a signal (e.g. the root read that
+    // used to succeed now fails) and must not hide behind an unchanged Unknown mode.
     compare!(
         "posture_confidence",
         before.posture_confidence,
@@ -148,5 +158,24 @@ mod tests {
         let paths: Vec<&str> = entries.iter().map(|e| e.path.as_str()).collect();
         assert!(paths.contains(&"posture_confidence"));
         assert_eq!(entries.len(), 1);
+    }
+
+    #[test]
+    fn build_change_is_reported_as_drift() {
+        let a = state(SecurityMode::Full);
+        let mut b = a.clone();
+        b.host.macos_build = "23A344".to_string();
+        let d = diff(&a, &b);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].path, "host.macos_build");
+    }
+
+    #[test]
+    fn confidence_drop_is_reported_as_drift() {
+        let mut a = state(SecurityMode::Full);
+        a.posture_confidence = PostureConfidence::Measured;
+        let mut b = a.clone();
+        b.posture_confidence = PostureConfidence::UntrustedRead;
+        assert_eq!(diff(&a, &b)[0].path, "posture_confidence");
     }
 }
