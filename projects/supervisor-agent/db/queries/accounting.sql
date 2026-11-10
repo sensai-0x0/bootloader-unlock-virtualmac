@@ -29,4 +29,7 @@ UNION ALL SELECT 'staleness_clocks',   (SELECT count(*) FROM staleness_clocks), 
 UNION ALL SELECT 'events',             (SELECT count(*) FROM events),             'git event stream (§3.4 source 6)'
 UNION ALL SELECT 'clock_invalidation_events', (SELECT count(*) FROM clock_invalidation_events), 'computed implication history (§3.2)'
 UNION ALL SELECT 'contradictions',     (SELECT count(*) FROM contradictions),     'corrections-as-rows (§3.2)'
+UNION ALL SELECT 'score_runs',         (SELECT count(*) FROM score_runs),         'deterministic scoring anchors (§3.1 phase 3)'
+UNION ALL SELECT 'recommendations',    (SELECT count(*) FROM recommendations),    'ranked decision-brief lines (§3.1 phase 3) — brief_id NULL until phase 4'
+UNION ALL SELECT 'implications',       (SELECT count(*) FROM implications),       'generalized effect rows projected from clock invalidations (R3, phase 3)'
 ORDER BY table_name;

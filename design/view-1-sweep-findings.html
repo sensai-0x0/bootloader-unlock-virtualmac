@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vuln_res — sweep &amp; findings</title>
+  <meta name="description" content="Sweep and findings ledger for the vuln_res research pipeline — illustrative sample data, not a live feed." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@400;600&family=Fragment+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+
+  <!--
+    Sample data only. Row content below is illustrative, assembled from real
+    vuln_res/ vocabulary and real finding slugs seen in the repo's
+    sweep-reports/ directory — it is not a snapshot of the live findings
+    store. See design/README.md.
+  -->
+
+  <nav class="dial" aria-label="view">
+    <a href="view-1-sweep-findings.html" aria-current="page">sweep &amp; findings</a>
+    <a href="view-2-campaign-overview.html">campaign overview</a>
+  </nav>
+
+  <div class="headline">
+    <div class="figure">4</div>
+    <div class="label">findings opened this sweep</div>
+  </div>
+
+  <div class="manifest">
+    <div>
+      <div class="sweep-id">2026-11-11-001-host-independent-parsing-hardening</div>
+      <div class="sweep-label">host-independent parsing hardening</div>
+    </div>
+    <div class="duration">41m</div>
+    <div class="agents-run">agents run: recon, triage, exploit-dev · environment: disposable-vm, torn down</div>
+  </div>
+
+  <div class="legend" id="legend" role="group" aria-label="filter by status">
+    <input type="checkbox" id="f-open" class="legend-toggle" data-status="open" />
+    <label for="f-open">open</label>
+    <input type="checkbox" id="f-fixed" class="legend-toggle" data-status="fixed" />
+    <label for="f-fixed">fixed</label>
+    <input type="checkbox" id="f-disclosed" class="legend-toggle" data-status="disclosed-upstream" />
+    <label for="f-disclosed">disclosed-upstream</label>
+    <input type="checkbox" id="f-fp" class="legend-toggle" data-status="false-positive" />
+    <label for="f-fp">false-positive</label>
+    <input type="checkbox" id="f-esc" class="legend-toggle" data-status="escalated-to-human" />
+    <label for="f-esc">escalated-to-human</label>
+  </div>
+
+  <div class="ledger cols-findings" id="ledger">
+
+    <details data-status="fixed">
+      <summary>
+        <span class="col-target">state::collect::parse_security_mode — unanchored "Full" substring match</span>
+        <span class="col-src">static-analysis</span>
+        <span class="col-score severity" title="9 (3×1×3)"><span data-lit></span><span data-lit></span><span data-lit></span></span>
+        <span class="col-status status" data-status="fixed"><span class="tick"></span>fixed</span>
+      </summary>
+      <div class="detail">
+        <dl>
+          <dt>id</dt><dd>2026-11-11-001/security-mode-full-contains-whole-blob</dd>
+          <dt>technical detail</dt><dd>parse_security_mode matched "Full" anywhere in the bputil -d blob instead of anchoring to the "Security Mode:" line, so a decoy token elsewhere in the dump could flip the reading.</dd>
+          <dt>reproduction</dt><dd>tests/fixtures/bputil_d_reduced_VM_VIRTUALIZED.txt + appended decoy line</dd>
+          <dt>classification</dt><dd>logic-divergence · reachability 3 · blast-radius 3</dd>
+          <dt>resolution</dt><dd>match anchored to the summary line; regression test added</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details data-status="fixed">
+      <summary>
+        <span class="col-target">state::collect — csrutil SSV read, same unanchored-match class</span>
+        <span class="col-src">fuzzer-confirmed</span>
+        <span class="col-score severity" title="6 (2×1×3)"><span data-lit></span><span></span><span data-lit></span></span>
+        <span class="col-status status" data-status="fixed"><span class="tick"></span>fixed</span>
+      </summary>
+      <div class="detail">
+        <dl>
+          <dt>id</dt><dd>2026-11-10-001/ssv-enabled-contains-whole-blob</dd>
+          <dt>technical detail</dt><dd>Same unanchored-substring class as above, on the SSV status line. Found first; the Full-mode case was located by pattern after this one was confirmed.</dd>
+          <dt>reproduction</dt><dd>minimized to a single-line stdin fixture</dd>
+          <dt>classification</dt><dd>logic-divergence · reachability 2 · blast-radius 3</dd>
+          <dt>resolution</dt><dd>same anchoring fix, applied to both parsers in one pass</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details data-status="open">
+      <summary>
+        <span class="col-target">verify --baseline — no size cap on the supplied file</span>
+        <span class="col-src">static-analysis</span>
+        <span class="col-score severity" title="4 (2×1×2)"><span data-lit></span><span></span><span></span></span>
+        <span class="col-status status" data-status="open"><span class="tick"></span>open</span>
+      </summary>
+      <div class="detail">
+        <dl>
+          <dt>id</dt><dd>2026-11-11-001/verify-baseline-no-size-cap</dd>
+          <dt>technical detail</dt><dd>The --baseline JSON file is read fully into memory before any size check. A large supplied file can exhaust memory before validation runs.</dd>
+          <dt>reproduction</dt><dd>not yet minimized — flagged by static analysis, no PoC input constructed</dd>
+          <dt>classification</dt><dd>hang · reachability 2 · blast-radius 2</dd>
+          <dt>chaining notes</dt><dd>none identified</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details data-status="escalated-to-human">
+      <summary>
+        <span class="col-target">ci_guards.sh — regex boundary allows a near-miss subprocess call to pass</span>
+        <span class="col-src">real-data-verification</span>
+        <span class="col-score severity" title="9 (3×1×3)"><span data-lit></span><span data-lit></span><span data-lit></span></span>
+        <span class="col-status status" data-status="escalated-to-human"><span class="tick"></span>escalated-to-human</span>
+      </summary>
+      <div class="detail">
+        <dl>
+          <dt>id</dt><dd>2026-11-11-001/ci-guards-regex-boundary-gaps</dd>
+          <dt>technical detail</dt><dd>The no-direct-subprocess CI guard's regex has a word-boundary gap that a renamed import could slip through. Confirmed against a constructed real-data case, not just a synthetic one.</dd>
+          <dt>chaining notes</dt><dd>would need to combine with a reviewer missing the new import — flagged for a human call on whether the guard itself needs a rewrite or a second, stricter guard added alongside it.</dd>
+          <dt>resolution</dt><dd>awaiting owner decision — see sweep-reports/2026-11-11-001-host-independent-parsing-hardening/</dd>
+        </dl>
+      </div>
+    </details>
+
+  </div>
+
+  <div class="rail">
+    <div class="rail-row"><span>sweep history</span><span>findings</span></div>
+    <div class="rail-row"><span>2026-11-10-002-fallback-and-audit</span><span>2 fixed</span></div>
+    <div class="rail-row"><span>2026-11-10-001-recon-verification</span><span>1 fixed</span></div>
+    <div class="rail-row"><span>knowledge entries recorded</span><span>6</span></div>
+  </div>
+
+  <script>
+    const legend = document.getElementById("legend");
+    const rows = document.querySelectorAll("#ledger > details");
+
+    legend.addEventListener("change", () => {
+      const active = Array.from(legend.querySelectorAll(".legend-toggle:checked")).map(
+        (el) => el.dataset.status
+      );
+      rows.forEach((row) => {
+        row.hidden = active.length > 0 && !active.includes(row.dataset.status);
+      });
+    });
+  </script>
+</body>
+</html>

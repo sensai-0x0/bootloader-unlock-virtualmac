@@ -564,6 +564,71 @@ here rather than silently resolved in code — every entry cites the phase that 
    treats described events exactly like real ones — the acceptance
    demonstration (Cargo.lock ⇒ `cargo-audit-clean` flips) fires on the same
    rule path a real commit would, with no special-casing in SQL.
+13. *(phase 3, 2026-11-11)* **SQLite has no `(VALUES …) AS alias(col)`
+   derived-table syntax.** `v_phase_coverage`'s phase enumeration
+   (`CROSS JOIN (VALUES ('recon'), …) AS ph(phase)`) is valid standard SQL
+   but not valid SQLite — confirmed against sqlite3 3.54.1, which accepts
+   the equivalent `WITH alias(col) AS (VALUES …)` CTE form but rejects the
+   same column-alias list on an inline derived table. Rewritten as
+   `(SELECT 'recon' AS phase UNION ALL SELECT 'build' …) AS ph`, re-verified
+   by rebuilding a scratch DB from `schema.sql` alone and diffing `.tables`
+   (§3.5 item 10's own rule, re-applied).
+14. *(phase 3, 2026-11-11)* **`v_score_inputs` is the canonical, exhaustive
+   input set — nothing q-scoring.sql doesn't consume.** Factors: 4 clock
+   states (`clock_live/invalid/never/missing`), 2 capability-approval
+   buckets (`cap_autonomous/cap_gated`), 2 finding stats
+   (`finding_count/finding_avg_score`), 1 global readiness gate
+   (`environments_registered`) — 9 factors × 6 initiatives, zeros included.
+   A `milestones_open` factor was drafted then removed before the first real
+   `score` run: the view's own header says "EVERY factor row the rubric
+   consumes," and nothing in q-scoring.sql read it — an unused factor would
+   widen the canonical hash's surface for no traceability benefit.
+15. *(phase 3, 2026-11-11)* **The §4.3 rubric's four components, as actually
+   implemented** (`db/queries/q-scoring.sql`), each clamped to the
+   contract's 1–9 range via SQLite's scalar `min(9, …)`:
+   `score_staleness = min(9, 1 + 2×invalid + 1×never + 1×missing)`;
+   `score_blast = min(9, 1 + cap_autonomous + cap_gated)`; `score_readiness`
+   = 9 when an autonomous capability exists with live staleness work to
+   react to, 6 when only autonomous capabilities exist, 1 when only gated
+   capabilities exist and zero environments are registered (the one hard
+   blocker this portfolio has today), 4 when gated capabilities exist and
+   environments are registered, else 2 (nothing dispatchable); `score_precedent`
+   = 1 with zero findings (honest baseline, not a zero that would out-rank a
+   bad track record), else `min(9, 1 + round(avg finding score))`. Ties
+   break toward cheaper-to-start per §4.3: secondary sort is
+   `score_readiness DESC` (a readier item needs less setup), tertiary
+   `initiative_id ASC` for full determinism.
+16. *(phase 3, 2026-11-11)* **`recommendations.capability_id` stays NULL at
+   phase 3.** The rubric scores at initiative grain (as §4.3 directs,
+   "reuse the … instinct at initiative grain"); binding a specific
+   capability per recommendation is phase 4's brief-generation job, not
+   phase 3's scoring job. `required_gate` is still computed and stored now
+   (from the initiative's registered capabilities' approval classes) so
+   phase 4 has it without re-deriving.
+17. *(phase 3, 2026-11-11)* **`implications` backfills from existing R1
+   history via a new rule, R3, rather than staying empty.** BUILD-SPEC §3.1
+   groups `implications` with `score_runs`/`recommendations` under
+   "Implication & ranking," and the table ships in migration 0005 — leaving
+   it permanently empty would fail its own §3.4 accounting entry's spirit
+   ("deliberately-absent-with-reason," not "never populated by design").
+   R3 (`db/queries/r3-implications-projection.sql`) projects
+   `clock_invalidation_events` into `effect_kind='clock_invalidated'` rows,
+   idempotently (`INSERT OR IGNORE` against the table's own UNIQUE
+   constraint) — R1 remains the sole authority on which clocks flipped and
+   when; R3 only generalizes the shape for phase 4+ effect kinds.
+18. *(phase 3, 2026-11-11)* **A rebuild-from-scratch mistake, caught and
+   reverted.** Verifying the snapshot-must-contain-every-migration rule
+   (item 10) by deleting `state/portfolio.db` and rebuilding from
+   `schema.sql` alone correctly proved the schema was complete — but it also
+   silently discarded phases 0–2's `decision_log`/`audit_runs` history,
+   which §3.2 forbids ("no facts are deleted") and §7 requires permanent
+   ("a silent pass is as unpublishable as a loud fail"). Recovered via
+   `git checkout -- state/portfolio.db` (the file is committed precisely so
+   this recovery is possible) and migration 0005 re-applied through the
+   normal incremental path (`apply_ddl` against the existing ledger), never
+   a fresh rebuild, on the real store again. The scratch-rebuild diff check
+   itself remains correct practice — it just belongs in `/tmp`, never
+   against `state/portfolio.db` directly.
 
 ---
 
