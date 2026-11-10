@@ -1,0 +1,35 @@
+.posture-confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.posture-confidence .tick {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+}
+
+.posture-confidence[data-confidence="measured"] .tick {
+  background: var(--signal-green);
+}
+.posture-confidence[data-confidence="measured"] {
+  color: var(--signal-green);
+}
+
+.posture-confidence[data-confidence="untrusted-read"] .tick {
+  background: transparent;
+  border: 1px solid var(--signal-green-dim);
+}
+.posture-confidence[data-confidence="untrusted-read"] {
+  color: var(--signal-green-muted);
+}
+
+.posture-confidence[data-confidence="unmeasured"] .tick {
+  background: var(--paper-white-dim);
+  height: 1px;
+  margin-top: 3px;
+}
+.posture-confidence[data-confidence="unmeasured"] {
+  color: var(--paper-white-dim);
+}

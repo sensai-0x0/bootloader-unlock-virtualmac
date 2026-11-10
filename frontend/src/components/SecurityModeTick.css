@@ -1,0 +1,34 @@
+.security-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.security-mode .tick {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+}
+
+/* Full is the one state that gets the "good" filled-green sense. Reduced,
+   Permissive, and Unknown all render the same neutral dash — they are
+   either a valid owner-chosen state or an honest measurement gap, never a
+   problem this glyph should flag the way escalated-to-human does
+   elsewhere. The word itself (not the glyph) carries which of the three it
+   is — see ../../design/FEATURE-PLAN.md's SecurityModeTick spec. */
+
+.security-mode[data-mode="Full"] .tick {
+  background: var(--signal-green);
+}
+.security-mode[data-mode="Full"] {
+  color: var(--signal-green);
+}
+
+.security-mode:not([data-mode="Full"]) .tick {
+  background: var(--paper-white-dim);
+  height: 1px;
+  margin-top: 3px;
+}
+.security-mode:not([data-mode="Full"]) {
+  color: var(--paper-white-dim);
+}
