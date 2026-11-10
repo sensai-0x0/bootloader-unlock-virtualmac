@@ -6,5 +6,6 @@ Technical reports summarizing `bputil-eval`'s build and execution state, and the
 - [`execution-product.md`](./execution-product.md) — what running the binary actually produces: CLI surface, exit codes, evidence model, and the precise line between what's been verified on real hardware versus specified-but-unexecuted.
 - [`disposable-vm.md`](./disposable-vm.md) — the simulated-research track: Track A (static IPSW ground truth) and Track B (a real macOS VM), what's been attempted, what blocked it, and host-impact disclosure.
 - [`unlocked-bootloader-evidence.md`](./unlocked-bootloader-evidence.md) — precisely what "unlocked" means in this project, the four-step evidence chain required to demonstrate it, and why the VM's chip generation must match or be older than the host's own before that chain can even be attempted.
+- [`m2-bootloader-unlock-technicians-guide.md`](./m2-bootloader-unlock-technicians-guide.md) — a hobbyist-facing guide to where M2-generation unlock progress actually stands, what's safe to run today, and what isn't built yet. Companion plan: `../plans/extension-local-model-hosting.md`.
 
 All four reports are documentation only — no mutating commands were run against this host or any device to produce them, beyond the local, reversible `cargo build`/`cargo test` already covered by `reports/execution-product.md` §2.
