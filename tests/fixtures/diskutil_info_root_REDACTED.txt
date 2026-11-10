@@ -1,0 +1,59 @@
+   Device Identifier:         disk3s1s1
+   Device Node:               /dev/disk3s1s1
+   Whole:                     No
+   Part of Whole:             disk3
+
+   Volume Name:               Macintosh HD
+   Mounted:                   Yes
+   Mount Point:               /
+
+   Partition Type:            00000000-0000-0000-0000-000000000000
+   File System Personality:   APFS
+   Type (Bundle):             apfs
+   Name (User Visible):       APFS
+   Owners:                    Enabled
+
+   OS Can Be Installed:       No
+   Booter Disk:               disk3s2
+   Recovery Disk:             disk3s3
+   Media Type:                Generic
+   Protocol:                  Apple Fabric
+   SMART Status:              Verified
+   Volume UUID:               <REDACTED-UUID>
+   Disk / Partition UUID:     00000000-0000-0000-0000-000000000000
+
+   Disk Size:                 994.7 GB (994662584320 Bytes) (exactly 1942700360 512-Byte-Units)
+   Device Block Size:         4096 Bytes
+
+   Volume Used Space:         12.3 GB (12298301440 Bytes) (exactly 24020120 512-Byte-Units)
+   Container Total Space:     994.7 GB (994662584320 Bytes) (exactly 1942700360 512-Byte-Units)
+   Container Free Space:      88.2 GB (88150130688 Bytes) (exactly 172168224 512-Byte-Units)
+   Allocation Block Size:     4096 Bytes
+
+   Media OS Use Only:         No
+   Media Read-Only:           Yes
+   Volume Read-Only:          Yes (read-only mount flag set)
+
+   Device Location:           Internal
+   Removable Media:           Fixed
+
+   Solid State:               Yes
+   Hardware AES Support:      Yes
+
+   This disk is an APFS Volume Snapshot.  APFS Information:
+   APFS Snapshot Name:        com.apple.os.update-CF9513BCD92B3766A60BDBD4D2EDBAE4750AF74781836A8C6C16E37CA65CAE0F
+   APFS Snapshot UUID:        00000000-0000-0000-0000-000000000000
+   APFS Container:            disk3
+   APFS Physical Store:       disk0s2
+   APFS Volume Group:         <REDACTED-UUID>
+   EFI Driver In macOS:       2632080001000001
+   Encrypted:                 No
+   FileVault:                 Yes
+   Sealed:                    Yes
+   Locked:                    No
+
+   APFS Snapshots are defined upon this APFS Volume.  Snapshot list:
+   Snapshot UUID:             00000000-0000-0000-0000-000000000000
+   Name:                      com.apple.os.update-CF9513BCD92B3766A60BDBD4D2EDBAE4750AF74781836A8C6C16E37CA65CAE0F
+   XID:                       42368140
+

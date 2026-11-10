@@ -1,0 +1,9 @@
+/target
+Cargo.lock.bak
+
+# plans/research-environment.md working output: the IPSW itself (20GB) and everything
+# extracted from it (kernelcache, device trees, BuildManifest dumps, etc.) are scratch
+# research artifacts, not something to commit. Only hand-picked, reviewed, redacted
+# fixtures derived from this work belong in tests/fixtures/.
+/*.ipsw
+/research/

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "from_mode": "Full",
+  "to_profile": "ReducedKexts",
+  "target_volume_group": "VUID-1234",
+  "commands": [
+    {
+      "argv": [
+        "bputil",
+        "-g",
+        "-k",
+        "-v",
+        "VUID-1234"
+      ],
+      "authoritative_source": "bputil --help (installed v0.1.14), confirmed on this host",
+      "expected_effect": "security_mode -> Reduced; third-party kexts trusted via SEP-signed AuxKC"
+    }
+  ],
+  "consequences": [
+    "third-party kernel extensions become trusted if SEP-signed",
+    "SIP remains enabled; SSV remains enabled"
+  ],
+  "invariants_to_check": [
+    "SingleContainerTouched",
+    "Reversible",
+    "MeasuredTruth",
+    "ThirdPartyKextsAllowedUnderReduced"
+  ],
+  "requires": {
+    "environment": "OneTrueRecovery",
+    "owner_credentials": true
+  }
+}

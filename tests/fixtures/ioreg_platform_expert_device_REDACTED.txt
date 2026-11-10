@@ -1,0 +1,33 @@
++-o J414sAP  <class IOPlatformExpertDevice, id 0x100000270, registered, matched, active, busy 0 (169375 ms), retain 46>
+    {
+      "IOPolledInterface" = "AppleARMWatchdogTimerHibernateHandler is not serializable"
+      "#address-cells" = <02000000>
+      "AAPL,phandle" = <01000000>
+      "serial-number" = <REDACTED>
+      "IOBusyInterest" = "IOCommand is not serializable"
+      "target-type" = <"J414s">
+      "platform-name" = <7436303230000000000000000000000000000000000000000000000000000000>
+      "name" = <"device-tree">
+      "secure-root-prefix" = <"md">
+      "region-info" = <582f410000000000000000000000000000000000000000000000000000000000>
+      "manufacturer" = <"Apple Inc.">
+      "target-sub-type" = <"J414sAP">
+      "compatible" = <"J414sAP","Mac14,9","AppleARM">
+      "config-number" = <00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000>
+      "IOPlatformSerialNumber" = "<REDACTED-SERIAL>"
+      "regulatory-model-number" = <4132373739000000000000000000000000000000000000000000000000000000>
+      "time-stamp" = <"Wed Jan 28 20:38:05 PST 2026">
+      "clock-frequency" = <00366e01>
+      "model" = <"Mac14,9">
+      "mlb-serial-number" = <REDACTED>
+      "model-number" = <5a31374730303251430000000000000000000000000000000000000000000000>
+      "device-tree-tag" = <"EmbeddedDeviceTrees-11156.81.3">
+      "IOConsoleSecurityInterest" = "IOCommand is not serializable"
+      "IONWInterrupts" = "IONWInterrupts"
+      "model-config" = <"ICT;MoPED=0x86678A438D567DE2B46B5D67E95CAB4CC5B36598">
+      "device_type" = <"bootrom">
+      "#size-cells" = <02000000>
+      "IOPlatformUUID" = "00000000-0000-0000-0000-000000000000"
+    }
+    
+

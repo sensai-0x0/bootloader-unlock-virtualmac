@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "from_mode": "Reduced",
+  "to_profile": "Full",
+  "target_volume_group": "VUID-1234",
+  "commands": [
+    {
+      "argv": [
+        "bputil",
+        "-f",
+        "-v",
+        "VUID-1234"
+      ],
+      "authoritative_source": "bputil --help (installed v0.1.14), confirmed on this host",
+      "expected_effect": "security_mode -> Full; ssv_enabled -> true; third-party kexts and custom kernel disallowed"
+    }
+  ],
+  "consequences": [
+    "SSV re-enabled",
+    "SIP fully enforced",
+    "any CustomBootObject enrolment is dropped"
+  ],
+  "invariants_to_check": [
+    "SingleContainerTouched",
+    "Reversible",
+    "MeasuredTruth",
+    "FullSecurityRestored"
+  ],
+  "requires": {
+    "environment": "OneTrueRecovery",
+    "owner_credentials": true
+  }
+}

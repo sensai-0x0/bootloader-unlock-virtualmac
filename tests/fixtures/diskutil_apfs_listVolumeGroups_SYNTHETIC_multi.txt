@@ -1,0 +1,19 @@
+APFS Containers (2 found)
+|
++-- Container disk1 11111111-1111-1111-1111-111111111111
+|   |
+|   +-> Volume Group 22222222-2222-2222-2222-222222222222
+|       =================================================
+|       APFS Volume Disk (Role):   disk1s1 (System)
+|       Name:                      Macintosh HD
+|       Volume UUID:               22222222-2222-2222-2222-222222222222
+|       Capacity Consumed:         12298301440 B (12.3 GB)
+|
++-- Container disk2 33333333-3333-3333-3333-333333333333
+    |
+    +-> Volume Group 44444444-4444-4444-4444-444444444444
+        =================================================
+        APFS Volume Disk (Role):   disk2s1 (System)
+        Name:                      External Test Volume
+        Volume UUID:               44444444-4444-4444-4444-444444444444
+        Capacity Consumed:         98765432100 B (98.8 GB)

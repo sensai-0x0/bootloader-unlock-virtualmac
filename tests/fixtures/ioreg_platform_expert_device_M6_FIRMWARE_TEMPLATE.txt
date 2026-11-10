@@ -1,0 +1,13 @@
+      "model" = "Mac18,1"
+      "compatible" = <"J804AP","Mac18,1","AppleARM">
+      "manufacturer" = <"Apple Inc.">
+      "secure-root-prefix" = <"md">
+      "device-tree-tag" = <"EmbeddedDeviceTrees-12661.41.1">
+      "platform-name" = <"">
+      "mlb-serial-number" = <"syscfg/MLB#/0x20,zeroes/0x20">
+      "model-number" = <"syscfg/Mod#/0x20,zeroes/0x20">
+      "region-info" = <"syscfg/Regn/0x20,zeroes/0x20">
+      "regulatory-model-number" = <"syscfg/RMd#/0x20">
+      "config-number" = <"syscfg/CFG#/0x40,zeroes/0x40">
+      "country-of-origin" = <"syscfg/Coor">
+      "clock-frequency" = <00000000>

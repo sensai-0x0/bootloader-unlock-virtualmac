@@ -1,0 +1,8 @@
+Hardware:
+
+    Hardware Overview:
+
+      Model Name: MacBook Pro
+      Model Identifier: Mac18,1
+      Chip: Apple M6
+      Serial Number (system): <NOT-APPLICABLE-GENERIC-FIRMWARE>

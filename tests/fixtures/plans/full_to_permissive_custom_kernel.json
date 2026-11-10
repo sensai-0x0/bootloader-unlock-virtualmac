@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "from_mode": "Full",
+  "to_profile": "PermissiveCustomKernel",
+  "target_volume_group": "VUID-1234",
+  "commands": [
+    {
+      "argv": [
+        "bputil",
+        "-n",
+        "-c",
+        "-s",
+        "-v",
+        "VUID-1234"
+      ],
+      "authoritative_source": "bputil --help (installed v0.1.14), confirmed on this host",
+      "expected_effect": "security_mode -> Permissive; kernel CTRR disabled; SSV disabled (contract-spec requires ssv_enabled == false whenever Permissive)"
+    },
+    {
+      "argv": [
+        "kmutil",
+        "configure-boot",
+        "-c",
+        "<custom-boot-object-path>",
+        "-v",
+        "VUID-1234"
+      ],
+      "authoritative_source": "spec/build-spec.md PlannedTransition worked example (verbatim)",
+      "expected_effect": "enrols the custom boot object; must verify as signer == SepLocalPolicy"
+    }
+  ],
+  "consequences": [
+    "SSV off",
+    "kernel CTRR (code read-only enforcement) disabled",
+    "a custom kernel/boot object may be enrolled and will boot without full Apple signing"
+  ],
+  "invariants_to_check": [
+    "SingleContainerTouched",
+    "Reversible",
+    "MeasuredTruth",
+    "CustomKernelAllowedUnderPermissive"
+  ],
+  "requires": {
+    "environment": "OneTrueRecovery",
+    "owner_credentials": true
+  }
+}

@@ -1,0 +1,23 @@
+APFS Containers (3 found)
+|
++-- Container disk1 00000000-0000-0000-0000-000000000000
+|   |
+|   +-> No Volume Groups among 4 Volumes
+|
++-- Container disk2 00000000-0000-0000-0000-000000000000
+|   |
+|   +-> No Volume Groups among 2 Volumes
+|
++-- Container disk3 00000000-0000-0000-0000-000000000000
+    |
+    +-> Volume Group 00000000-0000-0000-0000-000000000000
+        =================================================
+        APFS Volume Disk (Role):   disk3s1 (System)
+        Name:                      Macintosh HD
+        Volume UUID:               00000000-0000-0000-0000-000000000000
+        Capacity Consumed:         12298301440 B (12.3 GB)
+        -------------------------------------------------
+        APFS Volume Disk (Role):   disk3s5 (Data)
+        Name:                      Data
+        Volume UUID:               00000000-0000-0000-0000-000000000000
+        Capacity Consumed:         876244332544 B (876.2 GB)
