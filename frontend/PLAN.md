@@ -82,12 +82,37 @@ no `confidence` field, so there's nothing honest to drive a noise-as-texture
 treatment with. Splitting that out rather than inventing a fake confidence
 value just to have something to animate.
 
-## Phase 2 — loupe tooltip (next)
+## Phase 2 — loupe tooltip (done)
 
-Hover-driven magnification for `--font-data` numerals (score, ids,
-timestamps) — doesn't need new data, just interaction-timing decisions
-(show delay, anchor position). Self-contained enough to ship without
-touching the data model.
+**Shipped:** `Loupe` — a generic `display`/`full` wrapper, 250ms hover
+delay (and real keyboard-focus support, not just `:hover` — ties into the
+"keyboard tracing" interaction principle from `../design/AESTHETIC.md`
+rather than being mouse-only). Wired into `SeverityGlyph`, replacing its
+native `title` attribute outright: the severity glyph was already exactly
+the pattern the loupe concept describes — a compact visual standing in for
+an exact value — so this wasn't a new place to add interaction, it was
+removing a worse (inconsistent-timing, not keyboard-reachable,
+browser-styled) version of the same idea and putting the real one in its
+place.
+
+**Verified:** `bun run typecheck` clean, `bun test` — 27/27 pass (4 new:
+`Loupe.test.tsx` covers the delay, mid-delay mouse-leave cancel, and
+keyboard focus; `SeverityGlyph.test.tsx` rewritten to assert the glyph
+carries no inline text and that focusing it reveals the formatted score),
+`bun run build` bundles clean (7.37 KB CSS, up from 6.90 KB).
+
+**Judgment:** glad this replaced `title` rather than sitting alongside it —
+running both would have meant two overlapping tooltips on a slow hover
+(the browser's native one and the loupe's), which is exactly the kind of
+unexamined default stacking real interaction work is supposed to catch.
+One real limitation, noted rather than silently shipped: the overlay
+anchors above the trigger with a fixed offset, not actual cursor-following
+or viewport-edge detection — a severity glyph in the very first ledger row
+could clip above the viewport. Not fixed now; flagging it here instead of
+discovering it only when someone hits it.
+
+**Next:** Phase 2.5 (confidence field + noise-textured value) as revised
+after Phase 1, unchanged.
 
 ## Phase 2.5 — confidence field + noise-textured value
 

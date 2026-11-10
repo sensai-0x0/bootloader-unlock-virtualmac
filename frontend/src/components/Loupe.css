@@ -1,0 +1,26 @@
+.loupe-trigger {
+  position: relative;
+  display: inline-block;
+  cursor: zoom-in;
+}
+
+.loupe-trigger:focus-visible {
+  outline: 1px solid var(--signal-green);
+  outline-offset: 3px;
+}
+
+.loupe-overlay {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--graphite-700);
+  border: 1px solid var(--signal-green);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-data);
+  font-size: 18px;
+  color: var(--paper-white);
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+}

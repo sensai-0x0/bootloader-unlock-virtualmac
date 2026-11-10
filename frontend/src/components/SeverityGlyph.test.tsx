@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { SeverityGlyph } from "./SeverityGlyph";
 
 afterEach(cleanup);
@@ -14,10 +14,20 @@ describe("SeverityGlyph", () => {
     expect(cells[2]?.hasAttribute("data-lit")).toBe(true);
   });
 
-  test("exposes the exact score string via title, not inline text", () => {
+  test("the glyph itself carries no text — the exact score is behind the loupe, not inline", () => {
     const { container } = render(<SeverityGlyph score={{ reachability: 3, weight: 1, blastRadius: 3 }} />);
-    const glyph = container.querySelector(".severity");
-    expect(glyph?.getAttribute("title")).toBe("9 (3×1×3)");
-    expect(glyph?.textContent).toBe("");
+    expect(container.querySelector(".severity")?.textContent).toBe("");
+  });
+
+  test("focusing the glyph reveals the exact score string via the loupe", async () => {
+    const { container, getByText } = render(
+      <SeverityGlyph score={{ reachability: 3, weight: 1, blastRadius: 3 }} />,
+    );
+    const trigger = container.querySelector(".loupe-trigger");
+    expect(trigger).not.toBeNull();
+
+    fireEvent.focus(trigger!);
+
+    await waitFor(() => expect(getByText("9 (3×1×3)")).toBeDefined());
   });
 });
