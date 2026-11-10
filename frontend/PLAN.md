@@ -114,26 +114,39 @@ discovering it only when someone hits it.
 **Next:** Phase 2.5 (confidence field + noise-textured value) as revised
 after Phase 1, unchanged.
 
-## Phase 2.5 — confidence field + noise-textured value
+## Phase 2.5 — confidence field + noise-textured value (done)
 
-Add a `confidence` field to `Finding` (plausibly: mirrors
-`PostureConfidence` from `../design/FEATURE-PLAN.md` —
-`measured`/`untrusted-read`/`unmeasured` — since vuln_res findings already
-carry a `source` field that implies a confidence tier:
-`real-data-verification`/`fuzzer-confirmed` read as more certain than
-`static-analysis`). Only once that exists does the noise-as-texture
-treatment have something real to render instead of an invented value.
+**Shipped:** `FindingConfidence` (`measured`/`untrusted-read`/`unmeasured`,
+mirroring `PostureConfidence` from `../design/FEATURE-PLAN.md`) added to
+`Finding`, with each sample finding's tier derived from its actual
+`status`/`reproduction` rather than assigned arbitrarily — the one finding
+with `status: "open"` and no `reproduction` constructed yet is the one
+marked `untrusted-read`; the three with a reproduction or a fix verified
+are `measured`. `ConfidenceText` renders the degradation (`../../design/AESTHETIC.md`'s
+"signal noise as honesty" — a measured value gets no wrapper at all, the
+honest default is to add nothing). Wired into both the finding row's
+target text and, more interestingly, into `SeverityGlyph` — which now also
+degrades the loupe's *revealed* value, not just the inline glyph. That's
+the "degrade on distrust" interaction rule from `AESTHETIC.md` actually
+realized: a low-confidence value's loupe shouldn't hand back crisp false
+precision.
 
-## Phase 2 — loupe tooltip + noise-textured value
+**Verified:** `bun run typecheck` clean, `bun test` — 32/32 pass (5 new:
+`ConfidenceText.test.tsx`, two added `SeverityGlyph` cases for the
+default-measured and degraded-loupe paths), `bun run build` bundles clean
+(7.94 KB CSS).
 
-Hover-driven, stateful. The loupe needs real interaction-timing decisions
-(delay before showing, where it anchors); the noise-as-honesty texture
-needs an actual visual treatment for `posture_confidence`/finding
-`source`-derived uncertainty, which doesn't exist as data yet on this
-view — may need to introduce a `confidence` field to `Finding` first rather
-than inventing a visual with nothing to drive it.
+**Judgment / flagged, not fixed:** the `unmeasured` tier's color
+(`--hairline-strong`) is already low-contrast at full opacity (checked
+earlier against `graphite-900`, well under WCAG AA) and this phase makes it
+dimmer still via `opacity: 0.7`. Unused in today's sample data — no
+finding actually carries `unmeasured` — so it's dead code for now, not a
+live accessibility bug, but it would be one the moment it's used for
+anything the word itself doesn't already say. Worth a real color (not just
+an opacity drop) before `unmeasured` ever appears in real data, rather than
+assuming "it's supposed to look hard to read" excuses it.
 
-## Phase 3 — scrub timeline
+## Phase 3 — scrub timeline (next)
 
 Replaces the static sweep-history `Rail` rows with a draggable control.
 Saved for last because it's the most complex interaction (drag math,

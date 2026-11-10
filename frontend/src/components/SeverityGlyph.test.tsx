@@ -30,4 +30,25 @@ describe("SeverityGlyph", () => {
 
     await waitFor(() => expect(getByText("9 (3×1×3)")).toBeDefined());
   });
+
+  test("defaults to measured (no degradation) when confidence is omitted", () => {
+    const { container } = render(<SeverityGlyph score={{ reachability: 3, weight: 1, blastRadius: 3 }} />);
+    expect(container.querySelector(".confidence-text")).toBeNull();
+  });
+
+  test("an untrusted-read score degrades both the glyph and the loupe's revealed value", async () => {
+    const { container, getByText } = render(
+      <SeverityGlyph score={{ reachability: 3, weight: 1, blastRadius: 3 }} confidence="untrusted-read" />,
+    );
+    expect(container.querySelector(".severity")?.closest(".confidence-text")).not.toBeNull();
+
+    fireEvent.focus(container.querySelector(".loupe-trigger")!);
+
+    await waitFor(() => {
+      const revealed = getByText("9 (3×1×3)");
+      expect(revealed.closest(".confidence-text")?.getAttribute("data-confidence")).toBe(
+        "untrusted-read",
+      );
+    });
+  });
 });

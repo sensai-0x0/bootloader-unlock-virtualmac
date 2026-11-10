@@ -14,6 +14,7 @@ const findings: Finding[] = [
     classification: "logic-divergence",
     score: { reachability: 3, weight: 1, blastRadius: 3 },
     status: "fixed",
+    confidence: "measured",
     technicalDetail:
       'parse_security_mode matched "Full" anywhere in the bputil -d blob instead of anchoring to the "Security Mode:" line, so a decoy token elsewhere in the dump could flip the reading.',
     reproduction: "tests/fixtures/bputil_d_reduced_VM_VIRTUALIZED.txt + appended decoy line",
@@ -26,6 +27,7 @@ const findings: Finding[] = [
     classification: "logic-divergence",
     score: { reachability: 2, weight: 1, blastRadius: 3 },
     status: "fixed",
+    confidence: "measured",
     technicalDetail:
       "Same unanchored-substring class as above, on the SSV status line. Found first; the Full-mode case was located by pattern after this one was confirmed.",
     reproduction: "minimized to a single-line stdin fixture",
@@ -38,6 +40,7 @@ const findings: Finding[] = [
     classification: "hang",
     score: { reachability: 2, weight: 1, blastRadius: 2 },
     status: "open",
+    confidence: "untrusted-read",
     technicalDetail:
       "The --baseline JSON file is read fully into memory before any size check. A large supplied file can exhaust memory before validation runs.",
     chainingNotes: "none identified",
@@ -49,6 +52,7 @@ const findings: Finding[] = [
     classification: "logic-divergence",
     score: { reachability: 3, weight: 1, blastRadius: 3 },
     status: "escalated-to-human",
+    confidence: "measured",
     technicalDetail:
       "The no-direct-subprocess CI guard's regex has a word-boundary gap that a renamed import could slip through. Confirmed against a constructed real-data case, not just a synthetic one.",
     chainingNotes:

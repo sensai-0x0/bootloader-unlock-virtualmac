@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ConfidenceText } from "../components/ConfidenceText";
 import { Headline } from "../components/Headline";
 import { Ledger, LedgerRow } from "../components/Ledger";
 import { Legend } from "../components/Legend";
@@ -39,10 +40,12 @@ export function SweepFindingsView() {
           <LedgerRow
             key={finding.id}
             columns={[
-              <span className="col-target">{finding.target}</span>,
+              <span className="col-target">
+                <ConfidenceText confidence={finding.confidence}>{finding.target}</ConfidenceText>
+              </span>,
               <span className="col-src">{finding.source}</span>,
               <span className="col-score">
-                <SeverityGlyph score={finding.score} />
+                <SeverityGlyph score={finding.score} confidence={finding.confidence} />
               </span>,
               <span className="col-status">
                 <StatusTick status={finding.status} />
@@ -53,6 +56,7 @@ export function SweepFindingsView() {
               { label: "technical detail", value: finding.technicalDetail },
               ...(finding.reproduction ? [{ label: "reproduction", value: finding.reproduction }] : []),
               { label: "classification", value: finding.classification },
+              { label: "confidence", value: finding.confidence },
               ...(finding.chainingNotes ? [{ label: "chaining notes", value: finding.chainingNotes }] : []),
               ...(finding.resolution ? [{ label: "resolution", value: finding.resolution }] : []),
             ]}

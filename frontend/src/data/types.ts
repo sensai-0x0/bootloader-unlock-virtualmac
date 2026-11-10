@@ -13,6 +13,15 @@ export type FindingSource =
 
 export type ClassificationType = "memory-safety" | "panic" | "hang" | "logic-divergence";
 
+/**
+ * Mirrors bputil-eval's own PostureConfidence vocabulary
+ * (../../design/FEATURE-PLAN.md) — how certain a reading is, independent of
+ * what it found. "unmeasured" exists for completeness (a legacy/default
+ * state) but no live finding should actually carry it, the same way a
+ * fresh BootState never reports Unmeasured.
+ */
+export type FindingConfidence = "measured" | "untrusted-read" | "unmeasured";
+
 export type ScoreFactor = 1 | 2 | 3;
 
 export interface Score {
@@ -28,6 +37,7 @@ export interface Finding {
   classification: ClassificationType;
   score: Score;
   status: FindingStatus;
+  confidence: FindingConfidence;
   technicalDetail: string;
   reproduction?: string;
   chainingNotes?: string;
