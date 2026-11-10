@@ -48,6 +48,8 @@ pub enum CollectError {
     NoVolumeGroup,
     #[error("could not determine the device serial number from system_profiler")]
     NoSerial,
+    #[error("could not determine SSV status from `csrutil authenticated-root status` (saw: {0:?})")]
+    NoSsvStatus(String),
     #[error("collect() built an internally inconsistent BootState: {0}")]
     Invalid(#[from] BootStateError),
 }
@@ -81,7 +83,8 @@ pub fn collect() -> Result<BootState, CollectError> {
 
     // Security-relevant reads: recorded into evidence.raw_outputs.
     let ssv_record = wrapper::run(&["csrutil", "authenticated-root", "status"])?;
-    let ssv_enabled = ssv_record.stdout.to_lowercase().contains("enabled");
+    let ssv_enabled = parse_ssv_enabled(&ssv_record.stdout)
+        .ok_or_else(|| CollectError::NoSsvStatus(ssv_record.stdout.clone()))?;
     record(&mut raw_outputs, &ssv_record);
 
     // Non-interactive: never prompts, never blocks. Absence of a cached credential is a
@@ -194,6 +197,24 @@ fn extract_other_containers(
         .collect()
 }
 
+/// `Authenticated Root status: enabled` from `csrutil authenticated-root status` →
+/// `Some(true)`/`Some(false)` on an exact, anchored match of the one status line;
+/// `None` on anything else, so an unrecognised future wording fails closed instead of
+/// silently guessing. Replaces an earlier whole-blob `.contains("enabled")` scan
+/// (`vuln_res/sweep-reports/2026-11-10-001-recon-verification/ssv-enabled-contains-whole-blob.md`)
+/// that had no fail-closed branch at all — this follows the same anchor-to-the-line
+/// discipline `extract_volume_group`/`extract_serial_masked` already use below.
+fn parse_ssv_enabled(csrutil_output: &str) -> Option<bool> {
+    let line = csrutil_output
+        .lines()
+        .find(|l| l.to_lowercase().contains("status"))?;
+    match line.split(':').nth(1)?.trim().to_lowercase().as_str() {
+        "enabled" => Some(true),
+        "disabled" => Some(false),
+        _ => None,
+    }
+}
+
 /// Best-effort parse of `bputil -d`'s "OS Type"-adjacent "Security Mode" line. Field names
 /// are known to vary across macOS builds (see `env.rs` module doc and the per-generation
 /// fixtures work scheduled for P5) — an unrecognised value degrades to `Unknown` rather than
@@ -296,6 +317,54 @@ mod tests {
     #[test]
     fn no_volume_group_lines_yields_empty() {
         assert!(extract_other_containers("nothing relevant here", "any-uuid").is_empty());
+    }
+
+    #[test]
+    fn parses_real_csrutil_authenticated_root_enabled_fixture() {
+        let fixture = include_str!("../../tests/fixtures/csrutil_authenticated_root_status.txt");
+        assert_eq!(parse_ssv_enabled(fixture), Some(true));
+    }
+
+    #[test]
+    fn recognises_disabled_status() {
+        assert_eq!(
+            parse_ssv_enabled("Authenticated Root status: disabled"),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn trailing_unrelated_text_does_not_flip_the_anchored_result() {
+        // The regression case this fix exists for: a line unrelated to the actual status
+        // that happens to contain the substring "enabled" must NOT flip the result. The
+        // old `stdout.to_lowercase().contains("enabled")` implementation would have
+        // returned `true` here (wrong — status is actually disabled); anchoring to the
+        // one line containing "status" and matching it exactly gives the correct `false`
+        // regardless of what else appears in the output.
+        let real_status_plus_unrelated_text = "Authenticated Root status: disabled\n\
+             (root filesystem signing can be enabled via csrutil enable)";
+        assert_eq!(
+            parse_ssv_enabled(real_status_plus_unrelated_text),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn a_status_line_with_an_unrecognised_value_fails_closed() {
+        // Unlike the case above (a real status line plus unrelated trailing text), this
+        // is the actual fail-closed case: the status line itself has a value that is
+        // neither "enabled" nor "disabled" — e.g. a future macOS build renaming the
+        // state. There is no safe guess here, so this must be `None`, not a silent
+        // default in either direction.
+        assert_eq!(
+            parse_ssv_enabled("Authenticated Root status: partially-enabled"),
+            None
+        );
+    }
+
+    #[test]
+    fn garbage_ssv_output_fails_closed() {
+        assert_eq!(parse_ssv_enabled("nothing relevant here"), None);
     }
 
     #[test]

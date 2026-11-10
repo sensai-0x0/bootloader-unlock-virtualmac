@@ -77,6 +77,20 @@ exposure, owner credentials are ones created fresh for this VM) and directly re-
 original SEP/LocalPolicy question M5 asked, on hardware that can actually attempt it. See
 `progress/milestones.md` for how this goes.
 
+**Resolved, 2026-11-10 (M8/M9/M6):** that question now has a real, measured answer — see
+`progress/milestones.md`'s log entries from this date for the full evidence trail.
+Against `vm-sec-research-25D125` (built from an IPSW matching this host's own chip/macOS
+build, `26.3`/`25D125`), **SEP/LocalPolicy communication works inside this VZ guest**: the
+Apple Developer Forums "Failed to create local policy" failure did not reproduce.
+`bputil -d` returned a real, paired local policy both before and after a live,
+human-typed `bputil -g -k -v <vuid>` run from the VM's recovery (1TR-equivalent)
+environment, and a fresh post-reboot measurement showed `Security Mode: Reduced` and
+`3rd Party Kexts Status: Enabled` as genuinely new, signed manifest values (changed nonce
+hash, incremented Cryptex generation) — not an assumption, not a cached read. This
+satisfies every item in "What success looks like" below against a VM, closing the open
+question this goal has carried since M4/M5 without needing M6-or-newer hardware or real
+scratch hardware.
+
 ## How this relates to the rest of the project
 
 - `plans/phase-0.md` through `phase-2.md` (read-only evaluator and planner) are

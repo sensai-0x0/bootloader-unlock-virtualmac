@@ -27,10 +27,10 @@ service of it.
 | M3 | `authorize`/`execute`/`verify` mutation pipeline implemented and proven on *some* target (real scratch hardware or VM, per `plans/phase-3.md`) | Not started | — |
 | M4 | A macOS VM built from the real IPSW, owned/controlled by this project (`plans/research-environment.md` Track B) | **Blocked** — `tart create --from-ipsw` fails with `UnsupportedRestoreImageError()` on this host | `plans/research-environment.md`'s "Results from Track B"; `progress/goal.md`'s updated open-question section |
 | M5 | Determined whether `bputil`'s mutation path (SEP/LocalPolicy) actually works inside that VM | Moot on this host — superseded by M4's earlier, more fundamental block; open again only if a newer-chip host becomes available | see M4's evidence |
-| M6 | End-to-end proof: `evaluate` → `plan` → `apply` → `verify` inside the VM, with `verify` reporting a real non-`Full` `security_mode` | Not started; blocked on M3, M4, M5 | — |
+| M6 | End-to-end proof: `evaluate` → `plan` → `apply` → `verify` inside the VM, with `verify` reporting a real non-`Full` `security_mode` | **Done** (manually, with real `bputil`/`csrutil` — not yet through the `bputil-eval` binary itself, whose `authorize`/`execute`/`verify` remain P3 stubs per `CLAUDE.md`) | `research/vm_measure_25D125.log` (baseline), `research/vm_verify_postmutation_25D125.log` (post-mutation) |
 | M7 | Written finding on why the VM path doesn't work, plus a decision on pursuing the same proof via `plans/phase-3.md`'s real scratch hardware instead | Decided: see M8 — a safer third option than either original branch, not a straight pivot to phase-3 | `progress/goal.md`'s "Decision, 2026-11-10" |
 | M8 | A VM built from a chip generation this host *can* virtualize (`tart create --from-ipsw=latest`), not the M6 image — re-opens M5's question on hardware that can actually attempt it, with strictly less risk than real scratch hardware | In progress — local IPSW downloaded (18.9 GB, `CURL_EXIT:0`), `tart create` against it running | `research/curl_download_25D125.log`; `research/ipsw_downloads/UniversalMac_26.3_25D125_Restore.ipsw` |
-| M9 | Determined whether `bputil`'s mutation path actually works inside *this* VM | Not started; blocked on M8 | — |
+| M9 | Determined whether `bputil`'s mutation path actually works inside *this* VM | **Done — yes, it works.** Both read (`bputil -d`) and mutation (`bputil -g -k -v <vuid>`, run live from the VM's recovery/1TR-equivalent by the user) succeeded, confirmed by a fresh post-reboot measurement | `research/vm_measure_25D125.log`, `research/vm_verify_postmutation_25D125.log` |
 
 ## Log
 
@@ -208,3 +208,144 @@ System Settings → General → Sharing) so this session can SSH in
 **Next up:** needs a human (this session's user) to complete Setup Assistant once and
 enable Remote Login inside the guest. Not blocked on anything else — the VM itself is
 healthy and booting.
+
+### 2026-11-10 (continued) — M9: SEP/LocalPolicy communication confirmed working inside this VM — a real, grounded answer, not a guess
+
+User completed Setup Assistant (local account `test`/short-name lowercased from the
+Full Name typed in Setup Assistant — note for next time: macOS derives the Unix short
+name by lowercasing, so SSH as `test`, not `Test`) and enabled Remote Login. Port 22
+confirmed open (`nc -zv` after an initial `No route to host` — Remote Login hadn't been
+flipped on yet at that point, consistent with "still mid-setup," not a bug). SSH'd in via
+`expect` (password auth, `StrictHostKeyChecking=no` for a known-fresh host key) and ran,
+inside the guest:
+
+```
+sw_vers              -> ProductVersion: 26.3, BuildVersion: 25D125 (matches the IPSW exactly)
+sysctl -n machdep.cpu.brand_string -> "Apple M2 Pro (Virtual)" — confirms
+                         plans/research-environment.md §1's prediction: virtualized/generic
+                         identity, not the real host chip string verbatim, not M6
+csrutil status       -> "System Integrity Protection status: enabled."
+sudo bputil -d        -> full, real local-policy dump — NOT a SEP-communication error
+```
+
+**This is the answer to the open question `goal.md` has carried since M4/M5, grounded in
+a real measurement on real (if virtualized) Apple hardware, not inferred:** the Apple
+Developer Forums report that `bputil -d` fails inside a VZ guest with a "Failed to create
+local policy" SEP error does **not** reproduce on this host (Apple M2 Pro, macOS 26.3) /
+`tart` v2.41.1 / guest macOS 26.3 combination. `bputil -d`'s output shows `OS Pairing
+Status: Paired` and a fully-populated local policy — SEP/LocalPolicy communication works.
+Decoded baseline state (several fields print as the Apple-documented default when their
+manifest entry is `absent`, which is itself informative — it means no policy override has
+ever been written): `Security Mode: Full`, `3rd Party Kexts Status: Disabled`, `SIP
+Status: Enabled`, `Signed System Volume Status: Enabled`, `Kernel CTRR Status: Enabled`,
+`Boot Args Filtering Status: Enabled` — i.e. a clean `Full` baseline, exactly what
+`goal.md`'s "What success looks like" step 1 asks for as the starting point.
+
+Also ran `bputil -h` (first 20 lines) to confirm `-u`/`-p` username/password flags exist
+for non-interactive credential passing — relevant to the next step, but **deliberately not
+used yet**: this session already automated the *evaluate*-side credentials (SSH password,
+`sudo -S` for the read-only `-d` call) via an `expect` script, which is fine for a read-only
+measurement, but `spec/build-spec.md` golden rule 4 is explicit that an actual mutation
+(`apply`) needs a live, typed owner confirmation that is never scripted/automated by the
+tool or the agent driving it — and real `bputil` mutations are documented to require
+running from 1TR (`tart run --recovery` is the likely VM-side equivalent, not yet tried).
+Stopping here deliberately rather than scripting a mutation call next.
+
+**Net result for `goal.md`'s open technical question:** answered, for this host/OS
+combination — SEP/LocalPolicy does not fail in this VZ guest. This reopens the real
+possibility of completing M6's full `evaluate -> plan -> apply -> verify` round trip
+*inside a VM*, which `plans/research-environment.md` had treated as foreclosed pending
+newer hardware. Whether the *mutation* path specifically also works (not just the read
+path) is still open — that's M9's remaining half.
+
+**Next up:** decide, with the user, whether to attempt the actual mutation step
+(`tart run --recovery` equivalent of 1TR, then `bputil` with a human-present, live-typed
+owner confirmation — not scripted) now, or treat the read-path confirmation above as
+sufficient evidence for this milestone and pause before touching the mutating half, which
+is categorically more consequential per the golden rules.
+
+### 2026-11-10 (continued) — M9 mutation half + M6: attempted the real `apply` step, live, with the user typing owner confirmation
+
+User chose to continue. Stopped the running VM (`tart stop`), booted it with
+`tart run --recovery`. Confirmed — via the user running commands directly in the Recovery
+window's own Terminal, not via anything scripted by this session — that this is genuinely
+the paired-recovery (1TR-equivalent) environment: `whoami` returned `root` (Recovery's
+Terminal has no login) and `/System/Library/CoreServices/Finder.app` does **not** exist
+(the primary signal `env.rs`'s doc comment, per `CLAUDE.md`, says to check first).
+
+**Secondary finding, worth flagging for whoever next touches `env.rs`:** `CLAUDE.md`'s
+documented 1TR-detection fallback says `bputil -d`'s "OS Type" line should read "one true
+recoveryOS" when paired vs. "ordinary recovery OS" in fallback. That is **not** what this
+real `bputil` (v0.1.14, macOS 26.3) prints — it printed `OS Type: macOS (overridden)`
+identically in both the normal-OS run and this recovery run. That field evidently
+describes the *paired target OS* of the local policy, not the *current boot environment*
+— it does not vary with boot context the way the doc comment assumed. This doesn't change
+`env.rs`'s actual implementation (Finder.app-presence is still the primary, and apparently
+sufficient, check — confirmed working above), but the text-parsing fallback description in
+`CLAUDE.md` is now known to describe a string this real tool doesn't produce. Left as a
+finding, not fixed, since `env.rs`'s primary path already works and changing doc comments
+based on a VM-equivalent 1TR rather than real hardware felt like the wrong moment to firm
+that up further.
+
+Got the current container's volume group UUID from the earlier `bputil -d` capture
+(`EAB17EE3-38E4-4EB5-9DA8-603399A81E90`) and matched it against this project's own
+`plan.rs`: `Full -> ReducedKexts` plans exactly `bputil -g -k -v <vuid>` (confirmed via its
+own golden-file tests, `tests/fixtures/plans/full_to_reduced_kexts.json` — not reconstructed
+from memory). Gave the user that exact command to type themselves in the Recovery
+Terminal, deliberately not scripting it (golden rule 4) — including correcting a
+username mix-up (the account's *display* name was "Test Test"; `bputil`'s username prompt
+needs the POSIX short name, `test`, the same one SSH used).
+
+**User ran `bputil -g -k -v EAB17EE3-38E4-4EB5-9DA8-603399A81E90` live, typing the `test`
+account's credentials themselves at `bputil`'s own interactive prompt, and reported it
+printed success.**
+
+Per golden rule 8, `bputil`'s own success message is not itself the evidence this project
+requires — a fresh measurement from a normal boot is. **Not yet done as of this entry.**
+
+**Next up:** reboot the VM out of recovery into the normal OS (`tart stop` +
+`tart run`), SSH back in once Remote Login is reachable, and re-run `csrutil status` /
+`sudo bputil -d` to get the fresh post-mutation measurement. Only *that* output, not this
+entry, can close out M6's "evaluate -> plan -> apply -> verify" round trip and M9 in full.
+
+### 2026-11-10 (continued) — M6 and M9: closed, with a real fresh measurement
+
+Rebooted the VM out of recovery (`tart stop` then plain `tart run`), waited for Remote
+Login to come back up (confirmed via `nc -zv` polling, ~5s), SSH'd in again, and ran
+`csrutil status` + `sudo bputil -d` fresh — no caching, no reuse of the recovery-session
+output.
+
+**Result:** `Security Mode: Reduced (smb0): 1` and `3rd Party Kexts Status: Enabled
+(smb2): 1` — both fields that printed `absent` (defaulted-Full) in every prior capture on
+this VM now carry an explicit, signed value. The Local Policy Nonce Hash also changed
+(`166F6210...` vs. the baseline's `67C723D2...`) and `Cryptex1 Generation (stng)` went from
+`1` to `2` — both consistent with a genuinely new, re-signed local policy rather than a
+stale read. `csrutil status` still reports SIP enabled, matching `ReducedKexts`'s expected
+effect (SIP/SSV stay on; only third-party-kext trust changes) — exactly what `plan.rs`'s
+`commands_for(TargetProfile::ReducedKexts, ...)` predicted before any of this ran.
+
+**This closes `progress/goal.md`'s "What success looks like" checklist in full, against a
+VM this project built and controls, not real M6 hardware:**
+1. `evaluate`-equivalent baseline: `Security Mode: Full` (fields absent/defaulted) — ✅ (`research/vm_measure_25D125.log`)
+2. `plan`-equivalent: `bputil -g -k -v <vuid>`, matching `plan.rs`'s own committed golden file for `Full -> ReducedKexts` — ✅
+3. VM's 1TR-equivalent (recovery, confirmed paired via `whoami`=`root` + absent `Finder.app`), owner-present, live-typed confirmation, never scripted by this session — ✅
+4. Fresh `verify`-equivalent measurement showing the new, non-`Full` `security_mode` — ✅ (this entry)
+
+**What this does *not* yet mean:** `src/authorize.rs`/`execute.rs`/`verify.rs` are still
+P3 stubs — none of this ran through the actual `bputil-eval` binary; it was done with the
+real Apple tools directly, by hand, with the user as the live owner. What it *does* mean,
+concretely, for `CLAUDE.md`'s "Repository status" section (not edited here, since that's
+project doctrine rather than a progress log, but worth flagging explicitly): the stated
+reason P3 has been deliberately left unstarted — "needs a human physically rebooting into
+1TR to enter owner credentials, none of which this agent can do unattended" — has a
+narrower version now demonstrably satisfiable **with a human present or on-call for the
+`apply`/`revert` step**, via a disposable VM instead of real scratch hardware. Whether
+that's enough to start P3's actual Rust implementation is a decision for the user, not
+assumed here.
+
+**Not yet done:** the revert half of the round trip (`Reduced -> Full`, via `bputil -f -v
+<vuid>` per `plan.rs`'s own golden file) — `goal.md`'s checklist above doesn't require it,
+but `spec/phased-plan.md`'s P3 exit gate explicitly wants "full→reduced→full" as a round
+trip, and golden rule 5 requires a revert path to always exist. Left for a follow-up
+session or immediate continuation, at the user's call — the VM is still running, `Reduced`,
+reachable over SSH.
