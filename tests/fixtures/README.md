@@ -23,6 +23,9 @@ output into `tests/fixtures` for deterministic parser tests").
 | `sw_vers_buildVersion_M6.txt` | real IPSW's `BuildManifest.plist` `ProductBuildVersion` | Apple M6 (`Mac18,1`) | 26B7124 |
 | `system_profiler_hardware_M6_FIRMWARE_TEMPLATE.txt` | assembled from real IPSW data — see below | Apple M6 (`Mac18,1`) | 26B7124 |
 | `ioreg_platform_expert_device_M6_FIRMWARE_TEMPLATE.txt` | real IPSW's device tree, converted to ioreg's text shape — see below | Apple M6 (`Mac18,1`) | 26B7124 |
+| `bputil_d_full_VM_VIRTUALIZED.txt` | `sudo bputil -d`, captured over SSH from a live VM | Apple M2 Pro (Virtual) | 25D125 |
+| `bputil_d_reduced_VM_VIRTUALIZED.txt` | `sudo bputil -d`, captured over SSH from a live VM | Apple M2 Pro (Virtual) | 25D125 |
+| `bputil_d_permissive_VM_VIRTUALIZED.txt` | `sudo bputil -d`, transcribed from a screenshot of the VM's Recovery Terminal (owner typed the command live; no SSH in recoveryOS to capture it directly) | Apple M2 Pro (Virtual) | 25D125 |
 
 `image4_apticket.der` is a real, signed IM4M manifest, copied verbatim from the `image4`
 crate's own test suite (`tests/data/apticket.der` in `image4` v0.8.2, `MIT OR Apache-2.0`
@@ -71,24 +74,53 @@ from `UniversalMac_27.2_26B7124_Restore.ipsw`'s `BuildManifest.plist` and device
   `plans/research-environment.md`'s "Results from the real IPSW" section for exactly what
   was and wasn't confirmed.
 
+## `_VM_VIRTUALIZED` fixtures
+
+A fourth label, alongside `_REDACTED`/`_SYNTHETIC`/`_FIRMWARE_TEMPLATE`: `_VM_VIRTUALIZED`
+means the content is a real capture — not hand-typed, not reconstructed — but from a
+disposable VM this project built and controls (`progress/milestones.md` M8–M10), not from
+real physical Apple Silicon hardware. `bputil_d_full_VM_VIRTUALIZED.txt` and
+`bputil_d_reduced_VM_VIRTUALIZED.txt` were captured directly over SSH
+(`sudo bputil -d`, piped through `expect` for the password prompt only — never stored,
+never logged outside this session). `bputil_d_permissive_VM_VIRTUALIZED.txt` is the one
+exception: recoveryOS has no SSH to capture through, so that one was transcribed verbatim
+from a screenshot of the VM's Recovery Terminal, taken while the device's owner typed the
+mutating `bputil` command themselves (`progress/milestones.md`'s 2026-11-10 M10 log entry
+has the full chain of custody). All three carry the project's usual UUID/serial redaction
+(`<REDACTED-UUID>` for the Volume Group UUID, `<REDACTED-ECID>` for the Unique Chip ID) —
+the nonce hashes and Image4 hashes are left intact, since they aren't device-identifying
+in the sense `contract-spec.md`'s `host.serial_masked` constraint cares about, and leaving
+them real is what makes these fixtures useful as regression evidence (each one visibly
+differs from the others, exactly as a real re-signed local policy should).
+
+These fixtures fill the line-format gap `state/collect.rs::parse_security_mode` had: the
+real `Security Mode:` line is column-padded with many spaces, not the single space a
+hand-typed test string would naturally use — see that function's doc comment for the
+regression this caused and `src/state/collect.rs`'s `parses_real_*_state_from_vm_capture`
+tests for the fix proven against these exact bytes.
+
 ## What's missing
 
-`bputil -d` (and `-d -j`), i.e. the actual local-policy display, **requires root**
-(confirmed on this machine: without `sudo`, it fails with "The tool requires running as
-root"). Capturing it means running `sudo bputil -d` interactively and pasting the real
-output — something this agent cannot do itself, since typing the sudo password is a human
-action, and the tool must never automate, store, or prompt for that credential
-(`spec/build-spec.md` golden rule 4; `state/collect.rs`'s module doc explains why it uses
-`sudo -n` and degrades to `SecurityMode::Unknown` rather than ever touching that prompt).
-**A maintainer with physical access should capture this once**, per macOS build and chip
-generation in the hardware matrix (`spec/phased-plan.md`'s P5 "Coverage across the hardware
-matrix"), and add it here — redacted the same way the files below are.
+Real **physical Apple Silicon hardware**'s `bputil -d` output is still not captured here —
+the three `_VM_VIRTUALIZED` fixtures above are real captures, but from a VM, not a real
+device, consistent with `plans/research-environment.md` §1's point that a VM's
+chip/board/model identity strings are virtualized/generic, not the real hardware's own.
+Capturing the real-hardware version means running `sudo bputil -d` interactively on real
+hardware and pasting the output — something this agent cannot do itself, since typing the
+sudo password is a human action, and the tool must never automate, store, or prompt for
+that credential (`spec/build-spec.md` golden rule 4; `state/collect.rs`'s module doc
+explains why it uses `sudo -n` and degrades to `SecurityMode::Unknown` rather than ever
+touching that prompt). **A maintainer with physical access should capture this once**, per
+macOS build and chip generation in the hardware matrix (`spec/phased-plan.md`'s P5
+"Coverage across the hardware matrix"), and add it here — redacted the same way the files
+below are.
 
 Per-chip-generation coverage (per `spec/phased-plan.md`'s hardware test matrix) is a P5
 concern; this repo has real-hardware fixtures from the one Apple Silicon Mac available
-during initial development (M2 Pro), plus `_FIRMWARE_TEMPLATE` identity fixtures for M6
-derived from a real IPSW rather than real hardware (see above) — genuine M6 hardware
-fixtures, especially a real `bputil -d` capture, are still an open item.
+during initial development (M2 Pro), VM-captured fixtures for that same chip generation
+(above), plus `_FIRMWARE_TEMPLATE` identity fixtures for M6 derived from a real IPSW rather
+than real hardware (see above) — genuine M6 hardware fixtures, especially a real `bputil -d`
+capture from physical M6 hardware, are still an open item.
 
 ## Why `system_profiler`, not `ioreg`, for the serial number
 

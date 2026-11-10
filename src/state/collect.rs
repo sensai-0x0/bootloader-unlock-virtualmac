@@ -215,20 +215,48 @@ fn parse_ssv_enabled(csrutil_output: &str) -> Option<bool> {
     }
 }
 
-/// Best-effort parse of `bputil -d`'s "OS Type"-adjacent "Security Mode" line. Field names
-/// are known to vary across macOS builds (see `env.rs` module doc and the per-generation
-/// fixtures work scheduled for P5) — an unrecognised value degrades to `Unknown` rather than
-/// guessing, consistent with "Deterministic parsing" in `spec/build-spec.md`.
+/// Parse of `bputil -d`'s human-readable `Security Mode:` summary line — anchored to that
+/// one line, not a whole-blob scan, following the same discipline `parse_ssv_enabled` uses
+/// above (see that function's doc comment for the regression this class of bug causes).
+///
+/// Confirmed against real `bputil -d` output captured from a live VM this project
+/// controls (`tests/fixtures/bputil_d_*_VM_VIRTUALIZED.txt`; see
+/// `tests/fixtures/README.md`): the real line is padded with Apple's own column alignment,
+/// e.g. `Security Mode:               Full       (smb0): absent` — many spaces between the
+/// colon and the value, not the single space this function used to require. That mismatch
+/// meant a real `Full` state previously fell through every branch and silently degraded to
+/// `Unknown` on real hardware, never actually misreporting but never correctly reporting
+/// `Full` either. `Reduced`/`Permissive` happened to still work only because their old
+/// whole-blob `.contains(...)` checks didn't care about spacing — same bug class, just not
+/// yet manifesting for those two values.
+///
+/// This also fixes the line-selection ambiguity noted in the vuln-research audit
+/// (`vuln_res/AUDIT.md` §2): `bputil -d` prints *two* lines containing "Security Mode" — an
+/// earlier numeric one tagged `(CSEC)` and this human-readable one tagged `(smb0)`/
+/// `(smb0 && smb1)`. Anchoring on `"security mode:"` (colon immediately after "mode") is
+/// specific to the human-readable line; the numeric line has no colon in that position
+/// (`"security mode                           (csec): 1"`), so it's never matched here.
 fn parse_security_mode(bputil_output: &str) -> SecurityMode {
-    let lower = bputil_output.to_lowercase();
-    if lower.contains("security mode: full") || lower.contains("security mode (csec): 0") {
-        SecurityMode::Full
-    } else if lower.contains("permissive") {
-        SecurityMode::Permissive
-    } else if lower.contains("reduced") {
-        SecurityMode::Reduced
-    } else {
-        SecurityMode::Unknown
+    let Some(line) = bputil_output
+        .lines()
+        .find(|l| l.to_lowercase().contains("security mode:"))
+    else {
+        return SecurityMode::Unknown;
+    };
+    let Some((_, after_colon)) = line.split_once(':') else {
+        return SecurityMode::Unknown;
+    };
+    let value = after_colon
+        .split('(')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_lowercase();
+    match value.as_str() {
+        "full" => SecurityMode::Full,
+        "reduced" => SecurityMode::Reduced,
+        "permissive" => SecurityMode::Permissive,
+        _ => SecurityMode::Unknown,
     }
 }
 
@@ -381,5 +409,40 @@ mod tests {
             parse_security_mode("Security Mode: Permissive"),
             SecurityMode::Permissive
         );
+    }
+
+    // Regression coverage for the bug this function's doc comment describes: the old
+    // whole-blob `.contains("security mode: full")` check required an exact single space
+    // after the colon, which real `bputil -d` output never has (Apple pads the column with
+    // many spaces for alignment) — so a real `Full` state silently degraded to `Unknown`.
+    // These three fixtures are real `bputil -d` captures from a live VM this project
+    // controls (`tests/fixtures/README.md`), not hand-typed strings, so a regression here
+    // would be caught against the actual byte layout, not an idealised one.
+
+    #[test]
+    fn parses_real_full_state_from_vm_capture() {
+        let fixture = include_str!("../../tests/fixtures/bputil_d_full_VM_VIRTUALIZED.txt");
+        assert_eq!(parse_security_mode(fixture), SecurityMode::Full);
+    }
+
+    #[test]
+    fn parses_real_reduced_state_from_vm_capture() {
+        let fixture = include_str!("../../tests/fixtures/bputil_d_reduced_VM_VIRTUALIZED.txt");
+        assert_eq!(parse_security_mode(fixture), SecurityMode::Reduced);
+    }
+
+    #[test]
+    fn parses_real_permissive_state_from_vm_capture() {
+        let fixture = include_str!("../../tests/fixtures/bputil_d_permissive_VM_VIRTUALIZED.txt");
+        assert_eq!(parse_security_mode(fixture), SecurityMode::Permissive);
+    }
+
+    #[test]
+    fn the_numeric_csec_line_is_never_mistaken_for_the_summary_line() {
+        // Isolates the line-selection half of the fix: a blob containing only the numeric
+        // "(CSEC)" line (no colon directly after "Mode") must not match, even though it
+        // also contains the substring "security mode".
+        let numeric_only = "Security Mode                           (CSEC): 1";
+        assert_eq!(parse_security_mode(numeric_only), SecurityMode::Unknown);
     }
 }

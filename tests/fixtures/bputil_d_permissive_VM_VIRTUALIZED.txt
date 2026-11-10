@@ -1,0 +1,37 @@
+OS Type                                       : macOS (overriden)
+OS Pairing Status                             : Paired
+Local Policy Nonce Hash                 (lpnh): D9DAB02B6A5A1831FB053EA6B93BFC370CF1C594F15BF50B97F1935F5265D99E6B393A0DBDF9178EC710EE7A88E5FD60
+Remote Policy Nonce Hash                (rpnh): 161E8E5EE3F891A2872EA3B74B0A335CE42603374571804A3163E83568F948A1D6217B1A04F75E22D698194BC2DDDED1
+Recovery OS Policy Nonce Hash           (ronh): 129CD75908846FB566F9D71C02B1BAA5A8820ABE8351D5AF404D7029E040DDB484006BF6997306A1DB61805C2F3FEE24
+
+Local policy:
+Pairing Integrity                             : Valid
+Signature Type                                : Other
+Unique Chip ID                          (ECID): <REDACTED-ECID>
+Board ID                                (BORD): 0x20
+Chip ID                                 (CHIP): 0xFE00
+Certificate Epoch                       (CEPO): 0x1
+Security Domain                         (SDOM): 0x1
+Production Status                       (CPRO): 1
+Security Mode                           (CSEC): 1
+Local Boot                              (lobo): 1
+OS Version                              (love): 25.4.125.0.0,0
+Volume Group UUID                       (vuid): <REDACTED-UUID>
+KEK Group UUID                          (kuid): 00000000-0000-0000-0000-000000000000
+Local Policy Nonce Hash                 (lpnh): D9DAB02B6A5A1831FB053EA6B93BFC370CF1C594F15BF50B97F1935F5265D99E6B393A0DBDF9178EC710EE7A88E5FD60
+Remote Policy Nonce Hash                (rpnh): 161E8E5EE3F891A2872EA3B74B0A335CE42603374571804A3163E83568F948A1D6217B1A04F75E22D698194BC2DDDED1
+Next Stage Image4 Hash                  (nsih): 218675F8C275DB5720F5F3FC36012B9CB9C1544331DA3BEB2DFF7770DFD940FFB25CFC3EDCD45DC598B74A9A2E647F92
+Cryptex1 Image4 Hash                    (spih): ACE4CA5936D7A1A56509C80EC9EB17583F12C8FECC6215B19BA3D48510493B30D17870B29508905F3A65E45B5C518C10
+Cryptex1 Generation                     (stng): 4
+User Authorized Kext List Hash          (auxp): absent
+Auxiliary Kernel Cache Image4 Hash      (auxi): absent
+Kext Receipt Hash                       (auxr): absent
+CustomKC or fuOS Image4 Hash            (coih): absent
+Security Mode:               Permissive (smb0 && smb1): 1
+3rd Party Kexts Status:      Disabled   (smb2): absent
+User-allowed MDM Control:    Disabled   (smb3): absent
+DEP-allowed MDM Control:     Disabled   (smb4): absent
+SIP Status:                  Enabled    (sip0): absent
+Signed System Volume Status: Disabled   (sip1): 1
+Kernel CTRR Status:          Disabled   (sip2): 1
+Boot Args Filtering Status:  Enabled    (sip3): absent

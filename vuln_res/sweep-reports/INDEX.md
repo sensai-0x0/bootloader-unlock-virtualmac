@@ -37,3 +37,24 @@ One entry per sweep, ever run. Append, never rewrite history.
   [`summary.md`](./2026-11-10-002-fallback-and-audit/summary.md)
 - **Blocked on / escalated to human:** none remaining from this sweep — the registry gap
   is now a filed harness-feedback item with a working fallback, not an open blocker
+
+## 2026-11-11-001-host-independent-parsing-hardening
+
+- **Agents run:** none (run directly by the coordinating session — no agent registry
+  dependency, per the documented fallback)
+- **Environment(s):** none (static analysis + real fixture data, no sandbox needed)
+- **Targets covered:** `vuln_res/AUDIT.md`'s three open, no-host-install-required findings
+  (§1.2 verify DoS, §2 brittle text-parsing, §3 CI guard regex gaps); §1.1 and §4
+  deliberately excluded (need `cargo-fuzz`/`cargo-audit` installed — stopped to ask first,
+  not attempted)
+- **Duration:** under an hour
+- **New findings:** 3 — [`security-mode-full-contains-whole-blob`](./2026-11-11-001-host-independent-parsing-hardening/security-mode-full-contains-whole-blob.md)
+  (score 9, confirmed against real VM-captured `bputil -d` output, not hypothetical — **fixed
+  in this same sweep**, 4 new regression tests + 3 new real fixtures),
+  [`verify-baseline-no-size-cap`](./2026-11-11-001-host-independent-parsing-hardening/verify-baseline-no-size-cap.md)
+  (score 2, **fixed**, 2 new tests), and
+  [`ci-guards-regex-boundary-gaps`](./2026-11-11-001-host-independent-parsing-hardening/ci-guards-regex-boundary-gaps.md)
+  (operational, **fixed**, new `scripts/ci_guards_selftest.sh`)
+- **New knowledge entries:** see [`summary.md`](./2026-11-11-001-host-independent-parsing-hardening/summary.md)'s "New knowledge" section
+- **Blocked on / escalated to human:** none — all three targeted findings fixed; §1.1/§4
+  left for the user to approve a host-level tool install before attempting

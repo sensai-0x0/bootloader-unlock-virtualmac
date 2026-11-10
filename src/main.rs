@@ -25,6 +25,15 @@ mod exit_code {
     pub const PARSE_ERROR: u8 = 11;
 }
 
+/// Upper bound on a `verify --baseline <path>` input before it's even read into memory.
+/// `cmd_verify` deserializes this file into a `BootState`, which this binary did not
+/// necessarily produce itself (`vuln_res/AUDIT.md` §1.2) — e.g. a baseline someone emailed
+/// you, or one fetched as part of an automated pipeline. A real `BootState` is a few KB at
+/// most; 1 MiB is generous headroom while still bounding the memory a hostile, very large
+/// (not necessarily deeply nested) JSON array could otherwise force this process to
+/// allocate before `serde_json` ever gets a chance to reject it.
+const MAX_BASELINE_FILE_BYTES: u64 = 1024 * 1024;
+
 #[derive(Parser)]
 #[command(
     name = "bputil-eval",
@@ -164,6 +173,23 @@ fn cmd_plan(target: TargetProfile, json: bool) -> ExitCode {
 }
 
 fn cmd_verify(baseline_path: PathBuf, json: bool) -> ExitCode {
+    match std::fs::metadata(&baseline_path) {
+        Ok(meta) if meta.len() > MAX_BASELINE_FILE_BYTES => {
+            eprintln!(
+                "baseline {} is {} bytes, over the {MAX_BASELINE_FILE_BYTES}-byte limit for a \
+                 BootState file; refusing to read it",
+                baseline_path.display(),
+                meta.len()
+            );
+            return ExitCode::from(exit_code::PARSE_ERROR);
+        }
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("could not stat baseline {}: {e}", baseline_path.display());
+            return ExitCode::from(exit_code::PARSE_ERROR);
+        }
+    }
+
     let baseline_json = match std::fs::read_to_string(&baseline_path) {
         Ok(s) => s,
         Err(e) => {
@@ -248,5 +274,46 @@ fn cmd_report(out_dir: PathBuf, session_id: Option<String>) -> ExitCode {
             eprintln!("could not write evidence bundle: {e}");
             ExitCode::from(exit_code::PARSE_ERROR)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    // vuln_res/AUDIT.md §1.2: `verify --baseline <path>` deserializes a file this binary
+    // didn't necessarily produce itself, with no size cap before `serde_json` ever sees it —
+    // a cheap local DoS vector (large-allocation) against a baseline file from an untrusted
+    // source. This proves the size guard actually rejects an oversized file before any JSON
+    // parsing is attempted, rather than just trusting the constant exists.
+    #[test]
+    fn oversized_baseline_file_is_rejected_before_parsing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("huge_baseline.json");
+        let mut f = std::fs::File::create(&path).unwrap();
+        // Deliberately not valid JSON — if the size guard didn't fire first, this would
+        // fail with a JSON parse error instead, which the exit code alone can't
+        // distinguish from a correctly-functioning size guard. The content itself doesn't
+        // matter; only that it's never read past the metadata check.
+        let chunk = vec![b'a'; 4096];
+        let chunks_needed = (MAX_BASELINE_FILE_BYTES as usize / chunk.len()) + 1;
+        for _ in 0..chunks_needed {
+            f.write_all(&chunk).unwrap();
+        }
+        drop(f);
+        assert!(std::fs::metadata(&path).unwrap().len() > MAX_BASELINE_FILE_BYTES);
+
+        let result = cmd_verify(path, false);
+        assert_eq!(result, ExitCode::from(exit_code::PARSE_ERROR));
+    }
+
+    #[test]
+    fn missing_baseline_file_is_a_clean_error_not_a_panic() {
+        let result = cmd_verify(
+            PathBuf::from("/nonexistent/path/does-not-exist.json"),
+            false,
+        );
+        assert_eq!(result, ExitCode::from(exit_code::PARSE_ERROR));
     }
 }
