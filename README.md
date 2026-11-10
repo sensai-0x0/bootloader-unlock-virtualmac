@@ -12,7 +12,7 @@ Apple Silicon Macs ship in `Full` security mode. Two looser modes exist, reached
 | 🔓 `Reduced` | third-party kernel extensions |
 | 🔧 `Permissive` | a fully custom/unsigned kernel |
 
-**"Unlocking the bootloader," here, means exactly one thing: proving — with a fresh measurement, not an assumption — that `SecurityMode` moved off `Full`.** No signature bypass. No Secure Enclave trickery. Every mutation goes through Apple's own `bputil` / `kmutil` / `csrutil`, driven by this toolchain (`bputil-eval`), with a human owner in the loop every time.
+**"Unlocking the bootloader," here, means exactly one thing: proving — with a fresh measurement, not an assumption — that `SecurityMode` moved off `Full`.** No signature bypass. No Secure Enclave trickery. Every mutation goes through `bputil` / `kmutil` / `csrutil`, driven by this toolchain (`bputil-eval`), with a human owner in the loop every time.
 
 ## ✅ Success, evidenced
 
