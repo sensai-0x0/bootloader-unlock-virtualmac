@@ -15,14 +15,20 @@
 #              authority 0 for the run (§2.2)
 #   live:      true once the parser exists and has run against the real content
 
+# Milestone anchors (BUILD-SPEC §3.5 item 7; phase 1): which initiative owns which
+# milestone refs in progress/milestones.md. A new initiative must register a range
+# here before the parser binds its rows — no implicit claim.
+milestone_anchors:
+  vm_sec_research: "M0-M10"
+
 sources:
 
   - id: milestones
     paths: ["progress/goal.md", "progress/milestones.md"]
     authority: high
     objects: [initiative, evidence, milestone, milestone_log]
-    parser: deferred            # built in phase 1 (sources 1–2)
-    live: false
+    parser: regex:milestones
+    live: true
     notes: >
       The user's own record; newer dated entries in the same file outrank older
       ones and nothing else does. `milestones.md`'s own rules govern it: statuses
@@ -33,8 +39,8 @@ sources:
     paths: ["vuln_res/knowledge/INDEX.md", "vuln_res/knowledge/**/*.md"]
     authority: medium
     objects: [evidence, staleness_clock]
-    parser: deferred            # built in phase 1 (sources 1–2)
-    live: false
+    parser: regex:knowledge
+    live: true
     notes: >
       Documented one-line-per-entry format: `- [title](file.md) — hook
       (updated: YYYY-MM-DD)`. Entry kinds parsed from the file's own footer

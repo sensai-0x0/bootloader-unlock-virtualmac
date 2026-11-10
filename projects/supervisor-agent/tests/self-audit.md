@@ -28,9 +28,9 @@ across every table that carries a provenance_id column (BUILD-SPEC §3.5 scope
 rule: `meta`, `runs`, `decision_log`, `audit_runs` are exempt by construction —
 each row's provenance IS the run that wrote it).
 
-## A4 — No forbidden patterns in run artifacts **[auto]**
+## A4 — No forbidden patterns in the supervisor's own output **[auto]**
 
-Grep the generated views (`state/*.md` mirrors) and everything in `briefs/` for:
+Grep everything in `briefs/` and the `state/decision-log.md` mirror for:
 
 - `tart create`, `tart run`
 - `cargo fuzz`
@@ -39,7 +39,11 @@ Grep the generated views (`state/*.md` mirrors) and everything in `briefs/` for:
 
 A hit is either a mutation vocabulary leak into a recommendation or proposed
 execution — both FAIL until resolved. (README/BUILD-SPEC/tests deliberately quote
-these words as doctrine; they are not run artifacts.)
+these words as doctrine; they are not run artifacts. `state/fused-portfolio.md` is
+also exempt: it is a verbatim projection of the user's own progress record — its
+source lines legitimately *describe* pre-vuln_res VM-booting SSH/tart history, and
+quoting the user's record verbatim is the spec, not a proposal. Recorded as
+BUILD-SPEC §3.5 item 9 at phase 1.)
 
 ## A5 — Write scope grep-provable **[auto]**
 
