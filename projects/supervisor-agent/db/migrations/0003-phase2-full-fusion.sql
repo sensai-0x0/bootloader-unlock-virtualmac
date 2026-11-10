@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS cadence_reports (
     ingested_at     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cadence_reports ON cadence_reports(cadence, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS cadence_reports_path ON cadence_reports(path, created_at);
 
 CREATE TABLE IF NOT EXISTS fuzz_targets (
     id              INTEGER PRIMARY KEY,
