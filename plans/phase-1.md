@@ -57,3 +57,34 @@ target, keep the others" branch is tested against a hand-built synthetic fixture
 (`tests/fixtures/diskutil_apfs_listVolumeGroups_SYNTHETIC_multi.txt`), not a real multi-group
 capture. If a machine with a genuine second bootable volume group becomes available, replace
 it with a real redacted capture (see `tests/fixtures/README.md`).
+
+## 5. Posture-confidence follow-ups (evaluator "Build next" rank 1)
+
+`reports/evaluator/evaluator-decisions-2026-11-11.md`'s "Build next" rank 1 is in flight:
+`PostureConfidence` (`Measured`/`UntrustedRead`/`Unmeasured`) and a
+`BootState.posture_confidence` field exist in `src/state/mod.rs` (serde-defaulting to
+`Unmeasured` on legacy baselines, so nothing overclaims).
+
+**Landed 2026-11-11 (`feat/posture-confidence-fields`).** Schema step complete: enum +
+field + serde default + three new unit tests (legacy-baseline deserialises as
+`Unmeasured` and never upgrades its own claim; all three variants pass `validate()`;
+serialisation carries the field); every `BootState` literal updated (collect/diff/plan/
+report); quantity gates live-green — 58 tests, `clippy -D warnings`, `fmt`, both
+`ci_guards.sh` guards, and the P1 twice-run gate re-proven on the host (`evaluate --json`
+twice = timestamp only). The plan goldens needed no regeneration: `PlannedTransition`
+carries no posture field, so schema version 1 stays for both schemas (deliberate: no
+bump while field is serde-defaulted). `spec/contract-spec.md`'s data contract gained the
+`posture_confidence` row in the same change.
+
+Remaining work when resumed:
+
+1. Populate the field from `collect()` — the `sudo -n bputil -d` outcome already separates
+   measured/unmeasured. Until then `collect()` ships `Unmeasured` (conservative, never
+   overclaiming — see `PostureConfidence`'s doc comment).
+2. ~~Update every `BootState` literal and regenerate the plan goldens **deliberately**~~
+   — done this step; goldens confirmed unaffected (`PlannedTransition` has no posture
+   field).
+3. ~~Update `spec/contract-spec.md`'s data-contract section~~ — done this step.
+4. Cross-container posture fields (rank 1's second half) come only after that: real
+   `bputil -d -v <uuid>` reads stay gated on the same non-interactive-sudo rule as the
+   target container's own read.
