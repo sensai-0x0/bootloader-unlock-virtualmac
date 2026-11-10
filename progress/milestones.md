@@ -29,7 +29,7 @@ service of it.
 | M5 | Determined whether `bputil`'s mutation path (SEP/LocalPolicy) actually works inside that VM | Moot on this host — superseded by M4's earlier, more fundamental block; open again only if a newer-chip host becomes available | see M4's evidence |
 | M6 | End-to-end proof: `evaluate` → `plan` → `apply` → `verify` inside the VM, with `verify` reporting a real non-`Full` `security_mode` | Not started; blocked on M3, M4, M5 | — |
 | M7 | Written finding on why the VM path doesn't work, plus a decision on pursuing the same proof via `plans/phase-3.md`'s real scratch hardware instead | Decided: see M8 — a safer third option than either original branch, not a straight pivot to phase-3 | `progress/goal.md`'s "Decision, 2026-11-10" |
-| M8 | A VM built from a chip generation this host *can* virtualize (`tart create --from-ipsw=latest`), not the M6 image — re-opens M5's question on hardware that can actually attempt it, with strictly less risk than real scratch hardware | In progress | — |
+| M8 | A VM built from a chip generation this host *can* virtualize (`tart create --from-ipsw=latest`), not the M6 image — re-opens M5's question on hardware that can actually attempt it, with strictly less risk than real scratch hardware | In progress — local IPSW downloaded (18.9 GB, `CURL_EXIT:0`), `tart create` against it running | `research/curl_download_25D125.log`; `research/ipsw_downloads/UniversalMac_26.3_25D125_Restore.ipsw` |
 | M9 | Determined whether `bputil`'s mutation path actually works inside *this* VM | Not started; blocked on M8 | — |
 
 ## Log
@@ -149,3 +149,62 @@ yet confirmed complete. Once the file lands locally, `tart create
 **Next up:** confirm the `curl` download completes, then `tart create --from-ipsw=` the
 local file and retry M8. This entry exists so the next session (or the next context
 window) doesn't repeat the same two failed downloader paths from scratch.
+
+### 2026-11-10 (continued) — M8: confirmed the curl download actually finished; retrying `tart create` against the local file
+
+Picked this back up in a fresh session. The curl download that was "in progress, not yet
+confirmed complete" at the end of the previous entry had, in fact, already finished
+successfully by the time this session started: `research/curl_download_25D125.log` ends
+with `100 17.5G 100 17.5G ... CURL_EXIT:0`, and the file on disk
+(`research/ipsw_downloads/UniversalMac_26.3_25D125_Restore.ipsw`) is 18,877,622,182 bytes
+and reads as a valid zip archive (`file` confirms `Zip archive data`). Confirmed this host
+is still exactly `26.3`/`25D125` (`sw_vers`), so this is still the exact-match IPSW
+targeted deliberately to dodge the earlier `VZErrorDomain` "software update required"
+failure. Disk headroom checked before proceeding: `/System/Volumes/Data` had 90 GB free
+(808 GB used of 926 GB) — noted as tight but likely sufficient; being watched as the VM
+build runs, since a macOS VM install can be disk-hungry and this is a host-level disk
+commitment that needs tracking per `CLAUDE.md`'s host-impact rule.
+
+Started `tart create vm-sec-research-25D125 --from-ipsw=research/ipsw_downloads/UniversalMac_26.3_25D125_Restore.ipsw --disk-format asif` in the background, logging to
+`research/tart_create_25D125_local.log`.
+
+**Result: success.** `TART_EXIT:0`, progress reached 100%. `tart list` confirms:
+`vm-sec-research-25D125`, 50 GB disk, 22 GB accessed, state `stopped`. This clears the M4
+blocker for this chip generation — `UnsupportedRestoreImageError()` doesn't occur for an
+IPSW matching the host's own chip generation (M2 Pro / `26.3`/`25D125`), consistent with
+`plans/research-environment.md`'s inferred cause. Disk headroom after creation:
+67 GB free (was 90 GB before create, 90 GB before the download even landed) — tight but
+not exhausted; worth re-checking before any further disk-growing step (first boot/install
+can grow the APFS container further even though `asif` is sparse).
+
+**Next up:** `tart run vm-sec-research-25D125` to boot it. Expect this needs to run
+through to completion of first-boot setup, which likely requires either VNC
+(`tart run --vnc`) or GUI interaction with the window tart opens, since a fresh macOS VM's
+Setup Assistant isn't scriptable the way tart's own pre-built CI base images are. Once
+booted to a point SSH or screen sharing works, the real M9 steps are `csrutil status` and
+`sudo bputil -d` (or `-g`) inside the guest.
+
+### 2026-11-10 (continued) — M8: VM booted; blocked on a genuine tool-access gap, not a research finding
+
+Ran `tart run vm-sec-research-25D125` (backgrounded, PID confirmed alive via `ps`) — this
+opens a real GUI window on this host's own screen via Virtualization.framework, the same
+as it would if a person ran it themselves from Terminal. Checked this session's available
+tools before assuming further progress was possible: no `mcp__computer-use__*` tools are
+present (confirmed via a tool search, not assumed), meaning this session — Claude Code
+running in a terminal — has no way to see or click the VM's Setup Assistant screens itself.
+`--provisioning-opts` (which would script first-boot account creation + Remote Login
+non-interactively) requires the *host* to run macOS 27+; this host is 26.3, so that path is
+unavailable too, confirmed from `tart run --help`'s own text, not guessed.
+
+This is a tooling-access boundary, not a finding about the VM/bputil question itself —
+recording it as such rather than conflating the two. The VM is sitting at (or near) macOS's
+Setup Assistant on this host's real screen right now, waiting for a human to click through
+language/region/skip-Apple-ID/create-a-local-account, then run
+`sudo systemsetup -setremotelogin on` once at the Desktop (or enable Remote Login via
+System Settings → General → Sharing) so this session can SSH in
+(`tart ip vm-sec-research-25D125` for the address) and run the actual M9 commands
+(`csrutil status`, `sudo bputil -d`) without further GUI access.
+
+**Next up:** needs a human (this session's user) to complete Setup Assistant once and
+enable Remote Login inside the guest. Not blocked on anything else — the VM itself is
+healthy and booting.
