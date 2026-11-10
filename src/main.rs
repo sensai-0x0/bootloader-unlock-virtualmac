@@ -23,6 +23,14 @@ use std::process::ExitCode;
 mod exit_code {
     pub const OK: u8 = 0;
     pub const PARSE_ERROR: u8 = 11;
+    /// `verify` only: the fresh measurement differs from the baseline. Deliberately not
+    /// 13 (`InvariantViolated`): that code means "a transition this tool performed broke
+    /// an invariant — halt and disclose", whereas read-only drift is a detection finding
+    /// to triage. Follows the diff(1)/cmp(1) convention: 1 = differences found.
+    pub const DRIFT_DETECTED: u8 = 1;
+    /// `verify` only: no drift was found, but the fresh read was not fully measured
+    /// (e.g. no cached sudo, so `security_mode` is Unknown) — "no drift" would overclaim.
+    pub const INCONCLUSIVE: u8 = 2;
 }
 
 /// Upper bound on a `verify --baseline <path>` input before it's even read into memory.
@@ -67,7 +75,8 @@ enum Command {
         session_id: Option<String>,
     },
     /// Diff a baseline BootState (JSON, from a prior `evaluate --json`) against a fresh
-    /// measurement. Read-only. Full invariant assertion (`verify.assert_invariants` against
+    /// measurement. Read-only. Exit 0 = no drift on a measured read, 1 = drift,
+    /// 2 = no drift but the fresh read was not fully measured, 11 = bad/foreign baseline. Full invariant assertion (`verify.assert_invariants` against
     /// an actual mutation) is P3 work; this subcommand only exercises the structural diff.
     Verify {
         #[arg(long)]
@@ -173,37 +182,10 @@ fn cmd_plan(target: TargetProfile, json: bool) -> ExitCode {
 }
 
 fn cmd_verify(baseline_path: PathBuf, json: bool) -> ExitCode {
-    match std::fs::metadata(&baseline_path) {
-        Ok(meta) if meta.len() > MAX_BASELINE_FILE_BYTES => {
-            eprintln!(
-                "baseline {} is {} bytes, over the {MAX_BASELINE_FILE_BYTES}-byte limit for a \
-                 BootState file; refusing to read it",
-                baseline_path.display(),
-                meta.len()
-            );
-            return ExitCode::from(exit_code::PARSE_ERROR);
-        }
-        Ok(_) => {}
-        Err(e) => {
-            eprintln!("could not stat baseline {}: {e}", baseline_path.display());
-            return ExitCode::from(exit_code::PARSE_ERROR);
-        }
-    }
-
-    let baseline_json = match std::fs::read_to_string(&baseline_path) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("could not read baseline {}: {e}", baseline_path.display());
-            return ExitCode::from(exit_code::PARSE_ERROR);
-        }
-    };
-    let baseline: state::BootState = match serde_json::from_str(&baseline_json) {
+    let baseline = match load_baseline(&baseline_path) {
         Ok(b) => b,
         Err(e) => {
-            eprintln!(
-                "baseline {} is not a valid BootState: {e}",
-                baseline_path.display()
-            );
+            eprintln!("{e}");
             return ExitCode::from(exit_code::PARSE_ERROR);
         }
     };
@@ -216,7 +198,13 @@ fn cmd_verify(baseline_path: PathBuf, json: bool) -> ExitCode {
         }
     };
 
+    if let Err(e) = check_same_host(&baseline, &fresh) {
+        eprintln!("refusing to compare: {e}");
+        return ExitCode::from(exit_code::PARSE_ERROR);
+    }
+
     let diff = state::diff::diff(&baseline, &fresh);
+    let outcome = verify_outcome(&diff, &fresh);
     let rpt = report::Report {
         schema_version: state::SCHEMA_VERSION,
         session_id: format!(
@@ -229,7 +217,7 @@ fn cmd_verify(baseline_path: PathBuf, json: bool) -> ExitCode {
         // Full global-invariant assertion against a real transition is P3
         // (execute/verify.assert_invariants); this subcommand only proves the diff shape.
         invariants: vec![],
-        exit_code: 0,
+        exit_code: i32::from(outcome),
     };
 
     if json {
@@ -239,8 +227,79 @@ fn cmd_verify(baseline_path: PathBuf, json: bool) -> ExitCode {
         for entry in &rpt.diff {
             println!("  {}: {} -> {}", entry.path, entry.before, entry.after);
         }
+        if outcome == exit_code::INCONCLUSIVE {
+            println!(
+                "inconclusive: fresh posture_confidence is {:?}, not Measured",
+                rpt.result.as_ref().map(|r| r.posture_confidence)
+            );
+        }
     }
-    ExitCode::from(exit_code::OK)
+    ExitCode::from(outcome)
+}
+
+/// Read, bound, parse and validate an untrusted baseline file. A baseline is input this
+/// binary may not have produced (`vuln_res/AUDIT.md` §1.2), so it gets the same validity
+/// predicate as a fresh measurement plus a schema-version check — a baseline claiming a
+/// state `collect()` could never produce must not anchor a "no drift" verdict (F12, F13).
+fn load_baseline(path: &std::path::Path) -> Result<state::BootState, String> {
+    let shown = path.display();
+    let meta =
+        std::fs::metadata(path).map_err(|e| format!("could not stat baseline {shown}: {e}"))?;
+    if meta.len() > MAX_BASELINE_FILE_BYTES {
+        return Err(format!(
+            "baseline {shown} is {} bytes, over the {MAX_BASELINE_FILE_BYTES}-byte limit for a \
+             BootState file; refusing to read it",
+            meta.len()
+        ));
+    }
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("could not read baseline {shown}: {e}"))?;
+    let baseline: state::BootState = serde_json::from_str(&text)
+        .map_err(|e| format!("baseline {shown} is not a valid BootState: {e}"))?;
+    if baseline.schema_version != state::SCHEMA_VERSION {
+        return Err(format!(
+            "baseline {shown} has schema_version {}, this build reads only {}",
+            baseline.schema_version,
+            state::SCHEMA_VERSION
+        ));
+    }
+    state::validate(&baseline)
+        .map_err(|e| format!("baseline {shown} fails the BootState validity predicate: {e}"))?;
+    Ok(baseline)
+}
+
+/// A baseline from another machine or another volume group says nothing about this one;
+/// comparing against it would let a clean foreign baseline mask local drift (F14).
+fn check_same_host(baseline: &state::BootState, fresh: &state::BootState) -> Result<(), String> {
+    let pairs = [
+        (
+            "host.serial_masked",
+            &baseline.host.serial_masked,
+            &fresh.host.serial_masked,
+        ),
+        ("host.chip", &baseline.host.chip, &fresh.host.chip),
+        (
+            "target_container.volume_group_uuid",
+            &baseline.target_container.volume_group_uuid,
+            &fresh.target_container.volume_group_uuid,
+        ),
+    ];
+    match pairs.iter().find(|(_, b, f)| b != f) {
+        Some((field, b, f)) => Err(format!(
+            "baseline was captured on a different host/container ({field}: {b} vs {f})"
+        )),
+        None => Ok(()),
+    }
+}
+
+fn verify_outcome(diff: &[state::diff::DiffEntry], fresh: &state::BootState) -> u8 {
+    if !diff.is_empty() {
+        exit_code::DRIFT_DETECTED
+    } else if fresh.posture_confidence != state::PostureConfidence::Measured {
+        exit_code::INCONCLUSIVE
+    } else {
+        exit_code::OK
+    }
 }
 
 fn cmd_report(out_dir: PathBuf, session_id: Option<String>) -> ExitCode {
@@ -315,5 +374,108 @@ mod tests {
             false,
         );
         assert_eq!(result, ExitCode::from(exit_code::PARSE_ERROR));
+    }
+
+    fn write_baseline(dir: &std::path::Path, value: &serde_json::Value) -> PathBuf {
+        let path = dir.join("baseline.json");
+        std::fs::write(&path, serde_json::to_vec(value).unwrap()).unwrap();
+        path
+    }
+
+    fn good_baseline_json() -> serde_json::Value {
+        serde_json::json!({
+            "schema_version": 1,
+            "captured_at": "2026-01-01T00:00:00Z",
+            "environment": "MacOs",
+            "posture_confidence": "Measured",
+            "host": { "chip": "Apple M2 Pro", "macos_build": "24A335", "serial_masked": "WXYZ" },
+            "target_container": {
+                "volume_group_uuid": "AAAA", "security_mode": "Full", "ssv_enabled": true,
+                "allows_custom_kernel": false, "allows_third_party_kexts": false
+            },
+            "enrolled_objects": [],
+            "other_containers": [],
+            "evidence": { "raw_outputs": [] }
+        })
+    }
+
+    #[test]
+    fn a_well_formed_baseline_loads() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(load_baseline(&write_baseline(dir.path(), &good_baseline_json())).is_ok());
+    }
+
+    #[test]
+    fn committed_evidence_baseline_still_loads() {
+        // A real baseline from the VM round trip must survive the stricter loader.
+        let rel = "evidence/vm-sec-research-25D125/baseline_reduced.json";
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel);
+        if let Err(e) = load_baseline(&path) {
+            panic!("{rel}: {e}");
+        }
+    }
+
+    #[test]
+    fn baseline_failing_the_validity_predicate_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut v = good_baseline_json();
+        v["target_container"]["security_mode"] = "Permissive".into(); // with SSV on
+        assert!(load_baseline(&write_baseline(dir.path(), &v)).is_err());
+        let mut v = good_baseline_json();
+        v["captured_at"] = "2999-01-01T00:00:00Z".into();
+        assert!(load_baseline(&write_baseline(dir.path(), &v)).is_err());
+    }
+
+    #[test]
+    fn baseline_with_foreign_schema_version_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut v = good_baseline_json();
+        v["schema_version"] = 999.into();
+        let err = load_baseline(&write_baseline(dir.path(), &v)).unwrap_err();
+        assert!(err.contains("schema_version"), "{err}");
+    }
+
+    #[test]
+    fn baseline_with_unknown_fields_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut v = good_baseline_json();
+        v["verdict"] = "trust me".into();
+        assert!(load_baseline(&write_baseline(dir.path(), &v)).is_err());
+    }
+
+    fn parsed(v: serde_json::Value) -> state::BootState {
+        serde_json::from_value(v).unwrap()
+    }
+
+    #[test]
+    fn baseline_from_another_host_or_container_is_refused() {
+        let fresh = parsed(good_baseline_json());
+        for (ptr, val) in [
+            ("/host/serial_masked", "ABCD"),
+            ("/host/chip", "Apple M1"),
+            ("/target_container/volume_group_uuid", "BBBB"),
+        ] {
+            let mut v = good_baseline_json();
+            *v.pointer_mut(ptr).unwrap() = val.into();
+            assert!(check_same_host(&parsed(v), &fresh).is_err(), "{ptr}");
+        }
+        assert!(check_same_host(&fresh, &fresh).is_ok());
+    }
+
+    #[test]
+    fn verify_outcome_distinguishes_ok_drift_and_inconclusive() {
+        let measured = parsed(good_baseline_json());
+        assert_eq!(verify_outcome(&[], &measured), exit_code::OK);
+
+        let mut v = good_baseline_json();
+        v["posture_confidence"] = "UntrustedRead".into();
+        assert_eq!(verify_outcome(&[], &parsed(v)), exit_code::INCONCLUSIVE);
+
+        let drift = [state::diff::DiffEntry {
+            path: "target_container.security_mode".into(),
+            before: "Full".into(),
+            after: "Reduced".into(),
+        }];
+        assert_eq!(verify_outcome(&drift, &measured), exit_code::DRIFT_DETECTED);
     }
 }

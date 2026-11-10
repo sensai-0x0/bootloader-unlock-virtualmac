@@ -11,6 +11,7 @@ use crate::state::diff::DiffEntry;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,10 +37,31 @@ pub struct Report {
 pub enum ReportError {
     #[error("exit_code is 0 but at least one invariant did not hold: {0}")]
     InvalidZeroExitWithFailedInvariant(String),
+    #[error(
+        "session_id `{0}` must be 1-{MAX_SESSION_ID_LEN} characters of [A-Za-z0-9_-] \
+         (it becomes a directory name)"
+    )]
+    InvalidSessionId(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+}
+
+const MAX_SESSION_ID_LEN: usize = 64;
+
+/// `session_id` is joined onto `out_dir`; without this, `../x` or an absolute path would
+/// write outside it (offensive-robustness report, F11).
+fn validate_session_id(id: &str) -> Result<(), ReportError> {
+    let ok = (1..=MAX_SESSION_ID_LEN).contains(&id.len())
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
+    if ok {
+        Ok(())
+    } else {
+        Err(ReportError::InvalidSessionId(id.to_string()))
+    }
 }
 
 /// `ValidReport(r)` from `spec/contract-spec.md`: if `exit_code == 0` then every
@@ -65,18 +87,30 @@ pub fn validate(report: &Report) -> Result<(), ReportError> {
 /// more of them than `BootState.evidence.raw_outputs` alone.
 pub fn write_bundle(report: &Report, out_dir: &Path) -> Result<PathBuf, ReportError> {
     validate(report)?;
+    validate_session_id(&report.session_id)?;
 
+    // `create_dir` (not `_all`) for the session itself: an existing bundle is never
+    // overwritten, and the directory is known to be one this call just made.
+    fs::create_dir_all(out_dir)?;
     let session_dir = out_dir.join(&report.session_id);
-    fs::create_dir_all(&session_dir)?;
+    fs::create_dir(&session_dir)?;
 
     let json = serde_json::to_vec_pretty(report)?;
-    let report_path = session_dir.join("report.json");
-    fs::write(&report_path, &json)?;
+    write_new(&session_dir.join("report.json"), &json)?;
 
     let hash = hex::encode(Sha256::digest(&json));
-    fs::write(session_dir.join("report.sha256"), hash)?;
+    write_new(&session_dir.join("report.sha256"), hash.as_bytes())?;
 
     Ok(session_dir)
+}
+
+fn write_new(path: &Path, bytes: &[u8]) -> Result<(), ReportError> {
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)?;
+    f.write_all(bytes)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -152,5 +186,47 @@ mod tests {
         let expected_hash = hex::encode(Sha256::digest(&json));
         let stored_hash = fs::read_to_string(bundle_path.join("report.sha256")).unwrap();
         assert_eq!(stored_hash, expected_hash);
+    }
+
+    fn report_with_id(id: &str) -> Report {
+        Report {
+            schema_version: 1,
+            session_id: id.to_string(),
+            baseline: sample_baseline(),
+            result: None,
+            diff: vec![],
+            invariants: vec![],
+            exit_code: 0,
+        }
+    }
+
+    #[test]
+    fn traversal_and_absolute_session_ids_are_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        for bad in [
+            "../escape",
+            "/abs/path",
+            "a/b",
+            "",
+            ".",
+            "..",
+            &"x".repeat(65),
+        ] {
+            assert!(
+                matches!(
+                    write_bundle(&report_with_id(bad), dir.path()),
+                    Err(ReportError::InvalidSessionId(_))
+                ),
+                "session_id {bad:?} should be refused"
+            );
+        }
+    }
+
+    #[test]
+    fn an_existing_bundle_is_never_overwritten() {
+        let dir = tempfile::tempdir().unwrap();
+        write_bundle(&report_with_id("once"), dir.path()).unwrap();
+        let second = write_bundle(&report_with_id("once"), dir.path());
+        assert!(matches!(second, Err(ReportError::Io(_))));
     }
 }

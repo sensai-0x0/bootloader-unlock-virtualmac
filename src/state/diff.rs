@@ -32,6 +32,20 @@ pub fn diff(before: &BootState, after: &BootState) -> Vec<DiffEntry> {
     }
 
     compare!("environment", before.environment, after.environment);
+    // A build change is either a legitimate update or a downgrade/rollback — either way a
+    // drift worth surfacing, never silently equal (offensive-robustness report, F14).
+    compare!(
+        "host.macos_build",
+        before.host.macos_build,
+        after.host.macos_build
+    );
+    // A drop from Measured to a weaker read is itself a signal (e.g. the root read that
+    // used to succeed now fails) and must not hide behind an unchanged Unknown mode.
+    compare!(
+        "posture_confidence",
+        before.posture_confidence,
+        after.posture_confidence
+    );
     compare!(
         "target_container.security_mode",
         before.target_container.security_mode,
@@ -114,5 +128,24 @@ mod tests {
         assert!(paths.contains(&"target_container.security_mode"));
         assert!(paths.contains(&"target_container.allows_third_party_kexts"));
         assert_eq!(entries.len(), 2);
+    }
+
+    #[test]
+    fn build_change_is_reported_as_drift() {
+        let a = state(SecurityMode::Full);
+        let mut b = a.clone();
+        b.host.macos_build = "23A344".to_string();
+        let d = diff(&a, &b);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].path, "host.macos_build");
+    }
+
+    #[test]
+    fn confidence_drop_is_reported_as_drift() {
+        let mut a = state(SecurityMode::Full);
+        a.posture_confidence = PostureConfidence::Measured;
+        let mut b = a.clone();
+        b.posture_confidence = PostureConfidence::UntrustedRead;
+        assert_eq!(diff(&a, &b)[0].path, "posture_confidence");
     }
 }

@@ -68,6 +68,7 @@ fn default_posture_confidence() -> PostureConfidence {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Host {
     pub chip: String,
     pub macos_build: String,
@@ -77,6 +78,7 @@ pub struct Host {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct EnrolledObject {
     pub role: ObjectRole,
     /// 96 lowercase hex characters (sha384).
@@ -85,6 +87,7 @@ pub struct EnrolledObject {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TargetContainer {
     pub volume_group_uuid: String,
     pub security_mode: SecurityMode,
@@ -94,12 +97,14 @@ pub struct TargetContainer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct OtherContainer {
     pub volume_group_uuid: String,
     pub security_mode: SecurityMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RawOutput {
     pub command: Vec<String>,
     pub exit_code: i32,
@@ -107,11 +112,13 @@ pub struct RawOutput {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Evidence {
     pub raw_outputs: Vec<RawOutput>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct BootState {
     pub schema_version: u32,
     /// RFC3339, must not be in the future.
@@ -143,6 +150,11 @@ pub enum BootStateError {
     UnknownModeOutsideMacOs,
     #[error("ssv_enabled is true but security_mode is Permissive")]
     PermissiveWithSsvEnabled,
+    #[error(
+        "security_mode is Full but ssv_enabled is false — bputil and csrutil disagree \
+         (Full Security cannot have SSV disabled); possible tampering or misread"
+    )]
+    FullWithSsvDisabled,
     #[error("allows_custom_kernel is true but security_mode is not Permissive")]
     CustomKernelOutsidePermissive,
     #[error("allows_third_party_kexts is true but security_mode is Full")]
@@ -187,6 +199,14 @@ pub fn validate(state: &BootState) -> Result<(), BootStateError> {
     }
     if tc.security_mode == SecurityMode::Permissive && tc.ssv_enabled {
         return Err(BootStateError::PermissiveWithSsvEnabled);
+    }
+    // Cross-tool contradiction check (offensive-robustness report, finding F5): the mode
+    // comes from `bputil -d`, SSV from `csrutil authenticated-root status`. Disabling SSV
+    // requires lowering boot security, so Full + SSV-off means the two independent Apple
+    // tools disagree — a forger now has to fake both consistently. Only Full is asserted;
+    // whether Reduced permits SSV-off is not settled by the spec, so it is not guessed.
+    if tc.security_mode == SecurityMode::Full && !tc.ssv_enabled {
+        return Err(BootStateError::FullWithSsvDisabled);
     }
     if tc.allows_custom_kernel && tc.security_mode != SecurityMode::Permissive {
         return Err(BootStateError::CustomKernelOutsidePermissive);
@@ -313,6 +333,20 @@ mod tests {
         s.target_container.security_mode = SecurityMode::Permissive;
         s.target_container.ssv_enabled = true;
         assert_eq!(validate(&s), Err(BootStateError::PermissiveWithSsvEnabled));
+    }
+
+    #[test]
+    fn full_with_ssv_disabled_is_rejected_as_a_cross_tool_contradiction() {
+        let mut s = valid_full_state();
+        s.target_container.ssv_enabled = false;
+        assert_eq!(validate(&s), Err(BootStateError::FullWithSsvDisabled));
+    }
+
+    #[test]
+    fn unknown_fields_in_a_boot_state_are_rejected() {
+        let mut v = serde_json::to_value(valid_full_state()).unwrap();
+        v["target_container"]["injected"] = serde_json::json!(true);
+        assert!(serde_json::from_value::<BootState>(v).is_err());
     }
 
     #[test]

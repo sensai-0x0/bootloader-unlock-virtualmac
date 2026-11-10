@@ -53,4 +53,41 @@ else
     echo "OK"
 fi
 
+echo
+echo "== Guard 3: every subprocess names a pinned, absolute-path binary =="
+# Offensive-robustness report, finding F1: a bare-name PATH lookup lets any user-writable
+# directory earlier on PATH shadow /usr/bin/bputil. src/wrapper.rs resolves names through
+# ALLOWED_BINARIES at runtime; this guard makes an unlisted name a build failure instead of
+# a runtime refusal, and rejects any allowlist entry that is not an absolute path.
+GUARD3_CALL_PATTERN='wrapper::run(_with_limits)?\(&\["[^"]+"'
+GUARD3_SUDO_PATTERN='\["sudo"(, "-[^"]*")*, "[^"]+"'
+allowlist=$(sed -n '/^pub const ALLOWED_BINARIES/,/^];/p' src/wrapper.rs \
+    | grep -oE '\("[^"]+", "[^"]+"\)')
+if [ -z "$allowlist" ]; then
+    echo "FAIL: could not read ALLOWED_BINARIES from src/wrapper.rs"
+    fail=1
+fi
+while IFS= read -r entry; do
+    [ -z "$entry" ] && continue
+    path=$(echo "$entry" | sed -E 's/\("[^"]+", "([^"]+)"\)/\1/')
+    case "$path" in
+        /*) ;;
+        *) echo "FAIL: allowlist entry is not an absolute path: $entry"; fail=1 ;;
+    esac
+done <<< "$allowlist"
+# src/wrapper.rs is excluded from the call-site scan: its only bare names are its own
+# #[cfg(test)] fixtures (TEST_ONLY_BINARIES), never production call sites.
+names=$( { grep -rhoE --include='*.rs' --exclude='wrapper.rs' "$GUARD3_CALL_PATTERN" src \
+               | sed -E 's/.*\["([^"]+)"$/\1/';
+           grep -rhoE --include='*.rs' --exclude='wrapper.rs' "$GUARD3_SUDO_PATTERN" src \
+               | sed -E 's/.*"([^"]+)"$/\1/'; } | sort -u)
+guard3_bad=0
+for name in $names; do
+    if ! echo "$allowlist" | grep -qF "(\"$name\", "; then
+        echo "FAIL: subprocess \"$name\" is not in ALLOWED_BINARIES (src/wrapper.rs)"
+        guard3_bad=1
+    fi
+done
+if [ "$guard3_bad" -eq 0 ]; then echo "OK"; else fail=1; fi
+
 exit "$fail"

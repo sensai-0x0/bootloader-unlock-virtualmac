@@ -66,6 +66,16 @@ else
 fi
 
 echo
+echo "== Guard 3 corpus (call-site and sudo-target extraction) =="
+GUARD3_CALL_PATTERN='wrapper::run(_with_limits)?\(&\["[^"]+"'
+GUARD3_SUDO_PATTERN='\["sudo"(, "-[^"]*")*, "[^"]+"'
+check_matches "plain call site"               "$GUARD3_CALL_PATTERN" 'wrapper::run(&["bputil", "-d"])'
+check_matches "bounded call site"             "$GUARD3_CALL_PATTERN" 'wrapper::run_with_limits(&["csrutil"], l)'
+check_matches "sudo target after a flag"      "$GUARD3_SUDO_PATTERN" '["sudo", "-n", "bputil", "-d"]'
+check_matches "sudo target, no flags"         "$GUARD3_SUDO_PATTERN" '["sudo", "kmutil"]'
+check_does_not_match "unrelated string array" "$GUARD3_CALL_PATTERN" 'let v = ["bputil"];'
+
+echo
 if [ "$fail" -eq 0 ]; then
     echo "All guard regex self-tests passed."
 else
