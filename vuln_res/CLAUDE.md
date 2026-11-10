@@ -41,6 +41,15 @@ Apple's platform security.
   (iBoot/SEP/LocalPolicy/IMG4 format) as background knowledge for better static analysis
   and fuzz-corpus design — reading and writing *about* the format is in scope; attacking
   a real instance of it is not (see below).
+- **Web search for public research on a bug *class*** (`vulnres-pattern-analysis`,
+  `.claude/skills/vulnres-pattern-analysis/SKILL.md`) — CVEs, RustSec advisories,
+  conference writeups about e.g. "DER length-prefix integer overflow" or "ASN.1 parser
+  fuzzing technique," to sharpen fuzz-corpus design and inform how `vulnres-exploit-dev`
+  engineers a PoC against a *reachable instance of the same class in this repo's own
+  code*. Every result is scope-checked before use: generic/reusable technique
+  research is in scope; anything specifically about attacking Apple's Boot ROM, SEP,
+  iBoot, or a real device is not, and gets discarded rather than cited, no matter how
+  directly relevant it looks.
 
 ## What stays off-limits here, exactly as in the root file
 

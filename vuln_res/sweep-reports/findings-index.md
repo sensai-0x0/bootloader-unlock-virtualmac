@@ -1,6 +1,9 @@
 # Cross-sweep findings index
 
-One line per distinct finding, wherever it lives, most severe-and-open first.
+One line per distinct finding, wherever it lives, most severe-and-open first. A finding
+that reaches a working, engineered PoC also gets its own row in
+[`exploits-index.md`](./exploits-index.md) — check there for anything clearly marked as
+an exploit rather than a static finding.
 
 | Finding | Score | Status | Sweep |
 |---|---|---|---|

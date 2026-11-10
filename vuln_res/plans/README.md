@@ -109,7 +109,17 @@ The suite described above is now built, not just planned:
   `TEMPLATE-sweep.md`, `TEMPLATE-finding.md`, one directory per sweep). Plain markdown and
   text files on disk, inside this repo — readable by any OS tool without going through
   Claude; see `../sweep-reports/README.md`. A real database is deferred until past
-  prototype stage.
+  prototype stage. **`exploits-index.md`** is a separate, clearly-identified index
+  within this same store for findings that reached a working PoC — never folded into
+  the general findings table.
+- **Skills (project-scoped, `../../.claude/skills/`):**
+  `vulnres-pattern-analysis` — cross-sweep pattern detection over everything in
+  `knowledge/`/`sweep-reports/`, with `WebSearch` access to find public research on the
+  *same bug class* (never Apple's platform) to sharpen fuzzing and inform
+  `vulnres-exploit-dev`'s PoC technique. `vulnres-reporting` — generates daily/weekly/
+  monthly rollups of sweep activity to `../../reports/{daily,weekly,monthly}/`. Same
+  project-level-discovery caveat and fallback as the agents above applies to these too —
+  see each `SKILL.md`'s own "Project scoping" section.
 - Nothing has executed yet — no fuzz target has been built, no environment has been
   created. The first real sweep is `vulnres-orchestrator`'s to run, starting with
   `vulnres-recon` per that agent's own "what a sweep is" logic.
