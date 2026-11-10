@@ -31,3 +31,15 @@ Phase 3 verified. (1) §4.2 phase-coverage map: v_phase_coverage view computes s
 ## 2026-11-10T16:40:11Z — self-audit — pass
 
 []
+
+## 2026-11-10T21:59:51Z — self-audit — pass
+
+[]
+
+## 2026-11-10T22:00:35Z — self-audit — pass
+
+[]
+
+## 2026-11-10T22:00:51Z — phase-verification — pass
+
+Phase 4 verified -- THE golden run, per PROPOSAL.md's success metric. (1) Brief generator (tools/brief.py) renders briefs/<date>-<NNN>-brief.md from score_runs/recommendations/v_phase_coverage/staleness_clocks only, via the reviewed query layer -- never ad-hoc analysis. (2) Golden-run result (briefs/2026-11-10-001-brief.md, brief_id=1, score_run_id=2): do-next top-3 = vulnres_suite (rank1, score 7.75, required_gate='user approval'), project1_fuzz (rank2, score 2.75, required_gate='user approval to begin (software-only -- no hardware/1TR/fleet dependency)'), project3_drift (rank3). This satisfies the PROPOSAL's literal success metric ('recon is current, fuzzing hasn't started, no fleet project exists yet... recommends project 1') -- project 1 appears in the top-3 with the CORRECT required gate, distinctly ahead of project2_mutation/project3_drift once owner_gate's content-aware classification (item 19) correctly identified only project 1 as software-only. (3) needs-a-human list is complete: all 4 gated recommendations (vulnres_suite, project1_fuzz, project3_drift, project2_mutation) listed with accurate required_gate strings. (4) Zero execution: self-audit's forbidden-pattern scan covers briefs/*.md and passed; every DISPATCH ticket is text-only, approval_status=pending. (5) Two real correctness bugs surfaced and fixed while building this, not formula-gaming: (a) required_gate previously picked the MOST PERMISSIVE capability present (dishonestly reported vulnres_suite as gate='none' despite 4 of 7 capabilities being user_gated) -- now most-restrictive-first (item 21); (b) owner_gate was a blanket 'user_gated' for all three new projects, unable to distinguish project 1 (software-only) from project 2 (needs 1TR, verified via verbatim '1TR' marker in its own PROPOSAL.md) from project 3 (needs enrolled fleet hardware, verified via verbatim 'enrolled' marker) -- now classified per-project via parse_project_lifecycle (item 19). (6) A real environment (vm-sec-research-25d125) was registered by concurrent work mid-phase, exposing a self-contradictory 'zero environments (1)' wording bug in v_phase_coverage (item 22, fixed: wording only, state stays honestly 'blocked' per the registry's own approved_for-is-scoped rule) and a deeper, deliberately-deferred gap: 'never'-state clocks have no transition rule at all (item 23, flagged in the brief itself with a caveat, not silently fixed under this phase's time budget). (7) dispatch_tickets/briefs tables added via migration 0006, applied incrementally (db_version 5->6), schema.sql kept snapshot-complete, scratch-rebuild-verified. (8) tests/phase4-accounting.txt committed; every table including the two new ones ticked against the SS3.4 map.

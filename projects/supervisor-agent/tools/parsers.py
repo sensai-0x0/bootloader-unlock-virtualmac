@@ -689,11 +689,41 @@ def parse_cadence_reports(conn) -> dict:
 
 # ─── source 5: project lifecycle ────────────────────────────────────────────
 
+# owner_gate classification (phase 4): verbatim phrase markers in each
+# project's own PROPOSAL.md, checked in this priority order since a document
+# can legitimately mention both ("enrolled" wins for project 3 even though
+# its drift-watch false-positive-risk section also says "1TR" once, about a
+# legitimate 1TR change IT detects — not a gate ON project 3 itself).
+#   contains "enrolled" (case-insensitive)  -> real fleet hardware required
+#   contains "1TR"                          -> real 1TR owner round trip required
+#   neither                                 -> software-only; ordinary user
+#                                               approval to begin is the only gate
+# Verified against the real text at commit time: project 1 has zero matches
+# for either marker, project 2 has "1TR" (x2) and zero "enrolled", project 3
+# has "enrolled" (x8) and one incidental "1TR" mention (§3.5 item 19).
+OWNER_GATE_MARKERS = (
+    (re.compile(r"enrolled", re.IGNORECASE), "user_gated_fleet_hardware"),
+    (re.compile(r"1TR"), "user_gated_plus_1tr"),
+)
+
+
+def classify_owner_gate(proposal_text: str) -> str:
+    for pattern, gate in OWNER_GATE_MARKERS:
+        if pattern.search(proposal_text):
+            return gate
+    return "user_gated"
+
+
 def parse_project_lifecycle(conn) -> dict:
     """Projects 1–3: a phase-1 status file may not exist yet; absence means
     phase = pre-build, recorded as inference-with-provenance, never as fact
     (§2.2 source 5). The parser asserts the PROPOSAL each initiative cites is
-    really there and parses 'not-yet-executed' markers honestly."""
+    really there and parses 'not-yet-executed' markers honestly. Phase 4 adds
+    content-aware owner_gate classification (§3.5 item 19): the seed-time
+    blanket 'user_gated' for every project kind couldn't distinguish a
+    software-only project from one that structurally needs 1TR or enrolled
+    fleet hardware to make real progress — exactly the distinction a brief's
+    required_gate field exists to report honestly."""
     results = {"projects_checked": 3, "status_files": 0}
     for slug in ("project1_fuzz", "project2_mutation", "project3_drift"):
         row = conn.execute(
@@ -708,6 +738,21 @@ def parse_project_lifecycle(conn) -> dict:
         proposal_text = proposal.read_text(encoding="utf-8")
         phase1_ref = re.search(
             r"[Pp]hase\s*1[^\n]{0,120}", proposal_text)   # context, verbatim quote kept
+        gate = classify_owner_gate(proposal_text)
+        marker = next((p.pattern for p, g in OWNER_GATE_MARKERS if g == gate), None)
+        conn.execute(
+            "UPDATE initiatives SET owner_gate = ? WHERE id = ?", (gate, row["id"]))
+        # initiatives carries one provenance_id for the whole row (the seed
+        # source); owner_gate's own basis is a reparsed projection recorded
+        # the same way phase1_plan_note is below — in meta, keyed per slug,
+        # never by clobbering the row's seed attribution.
+        conn.execute(
+            "INSERT INTO meta(key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (f"owner_gate_basis:{slug}",
+             f"owner_gate={gate}; matched marker={marker!r}; source="
+             f"{row['proposal_ref']} (§3.5 item 19)"))
+        results[f"owner_gate:{slug}"] = gate
         if row["status_file_ref"] is None:
             still = add_provenance(
                 conn, row["proposal_ref"], "project_lifecycle",
@@ -891,7 +936,13 @@ CLOCK_SEEDS = [
 
 def seed_clocks(conn) -> dict:
     """Insert clock rows from CLOCK_SEEDS; verification anchors resolve to the
-    matching knowledge/finding evidence rows (source_ref fragment match)."""
+    matching knowledge/finding evidence rows (source_ref fragment match).
+    Phase 4 (§3.5 item 20): the anchor resolves to the MOST RECENTLY asserted
+    matching claim (ORDER BY asserted_at DESC), not whichever happened to be
+    ingested first — knowledge/INDEX.md's own
+    build-test-clippy-fmt-clean-2026-11-10/-2026-11-11 pair is a real case of
+    two currency claims for the same surface; anchoring to the newer one is
+    the content-aware, not merely file-order-dependent, choice."""
     results = {"clocks": 0, "live": 0, "never": 0}
     for surface, anchor, slug, invalidates, state, verified, policy in CLOCK_SEEDS:
         ini = initiative_id(conn, slug)
@@ -900,7 +951,7 @@ def seed_clocks(conn) -> dict:
         if anchor:
             row = conn.execute(
                 "SELECT id, asserted_at FROM evidence WHERE source_ref LIKE ? "
-                "ORDER BY ingested_at LIMIT 1",
+                "ORDER BY asserted_at DESC LIMIT 1",
                 (f"%{anchor}%",)).fetchone()
             if row is None:
                 raise ParseFailure(
