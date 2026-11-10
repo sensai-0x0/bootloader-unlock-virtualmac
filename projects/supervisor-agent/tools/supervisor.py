@@ -64,15 +64,26 @@ def load_meta(conn: sqlite3.Connection) -> dict:
 
 def apply_ddl(conn: sqlite3.Connection) -> int:
     """Apply cumulative schema + all migrations in filename order, idempotently.
-    Returns the resulting db_version (highest applied migration number)."""
+    Returns the resulting db_version (highest applied migration number).
+
+    Snapshot-first rule (§3.5 item 10): a database this runner created has the
+    ledger already; a fresh DB built purely from the snapshot (no ledger) gets
+    its ledger seeded WITHOUT replaying migrations — the snapshot is already
+    cumulative, and migrations contain ledger-guarded ALTERs that must run
+    exactly once (a replay would duplicate columns)."""
     conn.executescript(SCHEMA_PATH.read_text())
-    applied = json.loads((load_meta(conn) or {}).get(LEDGER_KEY, "[]") or "[]")
+    applied_raw = (load_meta(conn) or {}).get(LEDGER_KEY)
+    fresh_snapshot = applied_raw is None
+
+    applied = json.loads(applied_raw) if applied_raw else []
 
     for path in sorted(MIGRATIONS_DIR.glob("[0-9]*-*.sql")):
         name = path.name
-        if name not in applied:
+        if name in applied:
+            continue
+        if not fresh_snapshot:
             conn.executescript(path.read_text())
-            applied.append(name)
+        applied.append(name)
 
     conn.execute(
         "INSERT INTO meta(key, value) VALUES (?, ?) "
@@ -186,6 +197,58 @@ def render_fused_portfolio(conn: sqlite3.Connection) -> str:
     out.append(f"- parse_failures today: {conn.execute(
         'SELECT count(*) FROM parse_failures WHERE substr(at, 1, 10) = ?',
         (utcnow()[:10],)).fetchone()[0]}")
+    out += [""]
+
+    out += ["## Sweep ledger (parsed)", "",
+            "| sweep | kind | started | new findings (verbatim) |", "|---|---|---|---|"]
+    for r in conn.execute(
+            "SELECT sweep_id, kind, started_at, outcome FROM sweeps ORDER BY sweep_id"):
+        out.append(f"| {r['sweep_id']} | {r['kind']} | {r['started_at']} | "
+                   f"{(r['outcome'] or '')[:80]} |")
+    out += [""]
+
+    out += ["## Findings (verbatim from the cross-sweep index)", "",
+            "| finding | score | status |", "|---|---|---|"]
+    for r in conn.execute(
+            "SELECT finding_ref, score, disposition FROM findings ORDER BY finding_ref"):
+        out.append(f"| {r['finding_ref']} | {r['score'] or '—'} | {r['disposition']} |")
+    out += [""]
+
+    out += ["## Capabilities (parsed approval contracts)", "",
+            "| name | kind | approval_class |", "|---|---|---|"]
+    for r in conn.execute(
+            "SELECT name, kind, approval_class FROM capabilities ORDER BY name"):
+        out.append(f"| {r['name']} | {r['kind']} | {r['approval_class']} |")
+    out += [""]
+
+    out += ["## Staleness clocks (state is data)", "",
+            "| surface | state | last_verified_at |", "|---|---|---|"]
+    for r in conn.execute(
+            "SELECT surface, state, last_verified_at FROM staleness_clocks "
+            "ORDER BY surface"):
+        out.append(f"| {r['surface']} | {r['state']} | {r['last_verified_at'] or 'never'} |")
+    out += [""]
+
+    out += ["## Implication: clock invalidations", ""]
+    inv = conn.execute(
+        "SELECT c.surface, e.ref, e.detail FROM clock_invalidation_events cie "
+        "JOIN staleness_clocks c ON c.id = cie.clock_id "
+        "JOIN events e ON e.id = cie.event_id ORDER BY cie.fired_at").fetchall()
+    if inv:
+        for r in inv:
+            out.append(f"- `{r['surface']}` invalidated by {r['ref']} — {r['detail']}")
+    else:
+        out.append("(none fired)")
+    out += [""]
+
+    out += ["## Contradictions (loser marked, history kept)", ""]
+    con = conn.execute(
+        "SELECT rule_id, detail FROM contradictions ORDER BY detected_at").fetchall()
+    if con:
+        for r in con:
+            out.append(f"- [{r['rule_id']}] {r['detail']}")
+    else:
+        out.append("(none detected)")
     out += [""]
 
     return "\n".join(out) + "\n"
@@ -411,6 +474,31 @@ def parse_run(trigger: str, self_test: bool = False) -> None:
                  parsers.parse_milestones(conn, parsers.MILESTONES_PATH))[-1])
     one("knowledge", parsers.KNOWLEDGE_PATH,
         lambda: parsers.parse_knowledge(conn, parsers.KNOWLEDGE_PATH))
+    one("sweep_reports", parsers.SWEEPS_PATH,
+        lambda: (parsers.parse_sweeps(conn),
+                 parsers.parse_findings(conn),
+                 parsers.parse_exploits(conn))[-1])
+    one("environments_registry", parsers.ENVIRONMENTS_PATH,
+        lambda: parsers.parse_environments(conn))
+    one("project_lifecycle", parsers.ROOT / "projects",
+        lambda: parsers.parse_project_lifecycle(conn))
+    one("git_history", parsers.ROOT / ".git",
+        lambda: parsers.parse_git_events(conn))
+    one("capability_registry", parsers.AGENTS_GLOB.parent / "vulnres-recon.md",
+        lambda: parsers.parse_capabilities(conn))
+    one("cadence_reports", parsers.ROOT / "reports",
+        lambda: parsers.parse_cadence_reports(conn))
+
+    # clock seeding + implication are supervisor RULES over parsed data, not a
+    # source; failures there are still first-class records.
+    try:
+        report["clock_seeds"] = parsers.seed_clocks(conn)
+    except ParseFailure as exc:
+        degraded.append("supervisor_rules")
+        failed.append(("supervisor_rules", parsers.MILESTONES_PATH, exc.detail))
+        report["supervisor_rules:FAIL"] = exc.detail
+    if not any(s == "supervisor_rules" for s, _, _ in failed):
+        report["implication"] = parsers.run_implication(conn)
 
     for source, path, detail in failed:
         parsers.fail_row(conn, str(path.relative_to(ROOT)), source,
@@ -466,6 +554,38 @@ def cmd_decide(kind: str, outcome: str, detail: str) -> None:
     print("decision logged")
 
 
+def cmd_event(kind: str, detail: str, paths: str) -> None:
+    """Record a described (synthetic, acceptance) event — never anything that
+    executed. kind is limited to 'synthetic'; the detail must say what the
+    event DESCRIBES, not what this tool did. The implication rules decide the
+    effect on the next regeneration."""
+    if kind != "synthetic":
+        print("only kind='synthetic' supported (real events come from git on parse)",
+              file=sys.stderr)
+        return 2
+    path_list = [p.strip() for p in paths.split(",") if p.strip()]
+    conn = connect()
+    prov = add_provenance(conn, "decision_log-description", "supervisor_synthetic",
+                          None, "described acceptance event; nothing executed")
+    cur = conn.execute(
+        "INSERT INTO events(kind, occurred_at, ref, paths, detail, "
+        "provenance_id, ingested_at) VALUES ('synthetic', ?, ?, ?, ?, ?, ?)",
+        (utcnow(),
+         "synthetic:" + hashlib.sha256(detail.encode()).hexdigest()[:12],
+         json.dumps(path_list), detail, prov, utcnow()))
+    conn.commit()
+    checkpoint(conn)
+    conn.close()
+    print(f"event recorded id={cur.lastrowid} (nothing executed — description only)")
+
+
+def add_provenance(conn, source_ref, source_type, source_sha, note=None):
+    cur = conn.execute(
+        "INSERT INTO provenance(source_ref, source_sha, source_type, note) "
+        "VALUES (?, ?, ?, ?)", (source_ref, source_sha, source_type, note))
+    return cur.lastrowid
+
+
 def main(argv: list[str]) -> int:
     if not argv:
         print(__doc__)
@@ -491,6 +611,14 @@ def main(argv: list[str]) -> int:
         self_test = "--self-test" in rest
         return parse_run("self-test" if self_test else (rest[0] if rest else "manual"),
                          self_test=self_test)
+    elif cmd == "event":
+        if len(rest) < 3:
+            print("usage: event synthetic --detail <text> --paths <comma,list>",
+                  file=sys.stderr)
+            return 2
+        detail = rest[rest.index("--detail") + 1] if "--detail" in rest else ""
+        paths = rest[rest.index("--paths") + 1] if "--paths" in rest else ""
+        return cmd_event(rest[0], detail, paths)
     elif cmd == "render":
         conn = connect()
         write_mirrors(conn)

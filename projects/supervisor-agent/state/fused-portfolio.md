@@ -6,7 +6,7 @@ database is the single source of truth; this mirror is a view). Never
 edited by hand; a divergence would be a `sync_violations` row and the
 database wins every such fight.
 
-Regenerated: 2026-11-10T15:15:54Z
+Regenerated: 2026-11-10T15:29:03Z
 
 ## Initiatives
 
@@ -62,8 +62,11 @@ Regenerated: 2026-11-10T15:15:54Z
 
 | kind | rows |
 |---|---|
+| commit_event | 25 |
+| finding | 5 |
 | knowledge | 4 |
 | milestone | 10 |
+| sweep_summary | 3 |
 
 ## Links
 
@@ -73,4 +76,57 @@ Regenerated: 2026-11-10T15:15:54Z
 
 - parse_failures rows (all-time, first-class history): 2
 - parse_failures today: 2
+
+## Sweep ledger (parsed)
+
+| sweep | kind | started | new findings (verbatim) |
+|---|---|---|---|
+| 2026-11-10-001-recon-verification | recon | 2026-11-10 | 2 — [`ssv-enabled-contains-whole-blob`](./2026-11-10-001-recon-verification/ssv- |
+| 2026-11-10-002-fallback-and-audit | recon | 2026-11-10 | 0 (closed/root-caused the existing `agent-registry-not-live-this-session` |
+| 2026-11-11-001-host-independent-parsing-hardening | recon | 2026-11-11 | 3 — [`security-mode-full-contains-whole-blob`](./2026-11-11-001-host-independent |
+
+## Findings (verbatim from the cross-sweep index)
+
+| finding | score | status |
+|---|---|---|
+| vuln_res/sweep-reports/findings-index.md#agent-registry-not-live-this-session | n/a (operational) | root-caused; harness feedback filed; working fallback documented |
+| vuln_res/sweep-reports/findings-index.md#ci-guards-regex-boundary-gaps | n/a (operational) | fixed, self-test corpus added |
+| vuln_res/sweep-reports/findings-index.md#security-mode-full-contains-whole-blob | 9 (3×1×3) | fixed, confirmed against real VM-captured `bputil -d` output |
+| vuln_res/sweep-reports/findings-index.md#ssv-enabled-contains-whole-blob | 9 (3×1×3) | fixed (committed) |
+| vuln_res/sweep-reports/findings-index.md#verify-baseline-no-size-cap | 2 (1×1×2) | fixed |
+
+## Capabilities (parsed approval contracts)
+
+| name | kind | approval_class |
+|---|---|---|
+| vulnres-disclosure | agent | autonomous |
+| vulnres-environment-runner | agent | user_gated |
+| vulnres-exploit-dev | agent | autonomous |
+| vulnres-fuzz-harness | agent | user_gated |
+| vulnres-orchestrator | agent | user_gated |
+| vulnres-recon | agent | user_gated |
+| vulnres-triage | agent | autonomous |
+
+## Staleness clocks (state is data)
+
+| surface | state | last_verified_at |
+|---|---|---|
+| environments:first-registered | never | never |
+| fleet-enrollments:first-list | never | never |
+| fuzz-targets:first-built | never | never |
+| knowledge:build-test-clean | live | never |
+| knowledge:cargo-audit-clean | live | never |
+| knowledge:command-enum-note | live | never |
+| knowledge:owner-credentials-cleared | live | never |
+| vuln_res:agent-registry-fallback | invalid | 2026-11-10 |
+
+## Implication: clock invalidations
+
+- `vuln_res:agent-registry-fallback` invalidated by 0479b5b5e7a8e347fc19ff20ee1945223f168b6a — feat: fail-closed SSV status parsing; log M6/M9 VM mutation proof; add vuln-res agent framework
+- `vuln_res:agent-registry-fallback` invalidated by 65a2736689510d56d9538646d7ea737b9adb00df — docs: root-cause the vulnres-* agent-registry gap and document a working fallback
+- `vuln_res:agent-registry-fallback` invalidated by 86ce5fa96b0a2579e39f4ca50f1be6b0744f88c0 — feat: add vulnres-pattern-analysis and vulnres-reporting skills, exploits-index.md
+
+## Contradictions (loser marked, history kept)
+
+(none detected)
 
