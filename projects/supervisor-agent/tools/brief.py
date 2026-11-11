@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Supervisor agent brief generator — BUILD-SPEC §4.4, §8 phase 4.
+"""Supervisor agent brief generator — BUILD-SPEC §4.4/§8 phase 4,
+§5.5/§8 phase 5.
 
 Reads score_runs/recommendations/v_phase_coverage/staleness_clocks and
 writes briefs/*.md, one `briefs` row, and one `dispatch_tickets` row per
 top-3 recommendation. Dispatch tickets are text-only named blocks
 (`DISPATCH: <initiative>`) with scope invariants and required gate;
 nothing here executes, schedules, or writes outside briefs/ and the DB
-(same §7 invariant-1 scope as tools/supervisor.py)."""
+(same §7 invariant-1 scope as tools/supervisor.py). Phase 5 adds the
+"Simulate" and "TTP self-check" sections, reading sim_outcomes/sim_gaps/
+ttp_mappings only — never generates or reproduces simulated content, only
+reports what the DB already recorded."""
 
 import json
 import sys
@@ -16,6 +20,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from supervisor import BASE, utcnow, connect, checkpoint  # noqa: E402
 
 BRIEFS_DIR = BASE / "briefs"
+TTP_SELF_CHECK_QUERY = (BASE / "db" / "queries" / "q-ttp-self-check.sql").read_text()
+SIM_TOP_GAPS_QUERY = (BASE / "db" / "queries" / "q-sim-top-gaps.sql").read_text()
 
 
 def _latest_score_run(conn):
@@ -110,6 +116,62 @@ def render_brief(conn, score_run_id: int) -> dict:
     for c in coverage:
         note = c["note"].replace("|", "/")[:160]
         lines.append(f"| {c['slug']} | {c['phase']} | {c['state']} | {note} |")
+    lines.append("")
+
+    # ─── Simulate (§5.5) ─────────────────────────────────────────────────
+    sim_outcomes = conn.execute(
+        "SELECT p.name AS profile_name, so.summary, so.coverage_by_phase "
+        "FROM sim_outcomes so "
+        "JOIN sim_scenarios sc ON sc.id = so.scenario_id "
+        "JOIN tp_profiles p ON p.id = sc.profile_id "
+        "ORDER BY sc.id").fetchall()
+    top_gaps = conn.execute(SIM_TOP_GAPS_QUERY).fetchall()
+
+    lines += ["## Simulate", ""]
+    if sim_outcomes:
+        lines.append("Per-profile outcome (most recent scenario run):")
+        lines.append("")
+        for so in sim_outcomes:
+            lines.append(f"- **{so['profile_name']}** — {so['summary']} "
+                        f"[source: sim_outcomes]")
+        lines.append("")
+        lines.append("Top gap probes by detection-latency math:")
+        lines.append("")
+        if top_gaps:
+            for i, g in enumerate(top_gaps, start=1):
+                lines.append(f"{i}. ({g['profile_name']}) {g['question']} "
+                            f"[source: sim_gaps id={g['id']}]")
+        else:
+            lines.append("(no gap probes raised — every simulated step "
+                         "resolved covered)")
+        lines.append("")
+        lines.append("No recommendation has been raised from a gap probe yet "
+                     "(`sim_gaps.recommendation_id` is NULL throughout) — "
+                     "wiring gap probes into new `recommendations` rows is "
+                     "deferred past this phase's scope, noted honestly "
+                     "rather than half-built.")
+    else:
+        lines.append("(no simulation scenarios have been run yet)")
+    lines.append("")
+
+    # ─── TTP self-check (§5.5) ───────────────────────────────────────────
+    self_check = conn.execute(TTP_SELF_CHECK_QUERY).fetchall()
+    violations = [r for r in self_check if r["structural_violation"]]
+    scrutiny = [r for r in self_check if r["scrutiny_flag"]]
+    lines += ["## TTP self-check", ""]
+    lines.append(
+        f"- structural violations (`covered` with NULL evidence — the "
+        f"schema's own CHECK makes this impossible to insert at all): "
+        f"**{len(violations)}** [source: ttp_mappings CHECK constraint + "
+        "q-ttp-self-check.sql]")
+    if scrutiny:
+        lines.append(f"- scrutiny flags (`covered` claimed on a technique "
+                     f"with 0 MITRE-documented detection strategies): "
+                     f"**{len(scrutiny)}**")
+        for r in scrutiny:
+            lines.append(f"  - `{r['attack_id']}` / `{r['surface']}`")
+    else:
+        lines.append("- scrutiny flags: **0**")
     lines.append("")
 
     lines += ["## Dispatch tickets", ""]

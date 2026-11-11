@@ -1,0 +1,48 @@
+table_name                 rows  map_family                                                                                                                                       
+-------------------------  ----  -------------------------------------------------------------------------------------------------------------------------------------------------
+attack_releases            1     pinned ATT&CK STIX release(s) (§3.1 phase 5)                                                                                                     
+audit_runs                 10    supervisor own outputs (§3.4)                                                                                                                    
+briefs                     2     generated decision briefs (§3.1 phase 4 "Human outputs")                                                                                         
+cadence_reports            0     cadence rollups (§3.4)                                                                                                                           
+capabilities               7     the 6 stage agents + orchestrator + skills (§3.4)                                                                                                
+claim_anchors              8     knowledge claim chronology (phase-2 build-time amendment)                                                                                        
+clock_invalidation_events  5     computed implication history (§3.2)                                                                                                              
+contradictions             9     corrections-as-rows (§3.2)                                                                                                                       
+decision_log               13    supervisor backbone / own outputs (§3.4)                                                                                                         
+dispatch_tickets           6     text-only DISPATCH proposals per brief (§3.1 phase 4) — EMPTY approved_by: approval is a user act, never automated                               
+environments               1     environment registry (§3.4) — read-only mirror; a nonzero count is not approval for any specific initiative (approved_for is scoped, not blanket)
+events                     54    git event stream (§3.4 source 6)                                                                                                                 
+evidence                   84    durable knowledge entries + sweep summaries (§3.4)                                                                                               
+exploits                   0     weaponized/developed exploits (§3.4) — EMPTY by construction                                                                                     
+findings                   7     individual findings (§3.4)                                                                                                                       
+fleet_enrollments          0     fleet enrollment list (§3.4) — EMPTY, project 3 pre-build                                                                                        
+fuzz_targets               0     fuzz targets (§3.4) — EMPTY until project 1 builds its first                                                                                     
+implications               5     generalized effect rows projected from clock invalidations (R3, phase 3)                                                                         
+initiatives                6     portfolio goal + projects 1–3 defs (§3.4)                                                                                                        
+links                      16    object/link definitions (ontology/SCHEMA.md)                                                                                                     
+meta                       10    supervisor backbone / goal peg (§3.4)                                                                                                            
+milestone_log              10    milestone dated log / Next up (§3.4)                                                                                                             
+milestones                 11    milestone status (§3.4)                                                                                                                          
+parse_failures             1     honest-degradation records (§2.2)                                                                                                                
+phase_tactics              13    reviewed phase<->tactic data, never hardcoded in rendering (§3.1 phase 5 comment)                                                                
+provenance                 237   supervisor backbone (§3.1)                                                                                                                       
+recommendations            12    ranked decision-brief lines (§3.1); brief_id backfilled once a phase-4 brief cites the score_run                                                 
+runs                       4     supervisor backbone / own outputs (§3.4)                                                                                                         
+schedules                  0     approved standing schedules (§3.4) — EMPTY: approval is a user act                                                                               
+score_runs                 2     deterministic scoring anchors (§3.1 phase 3)                                                                                                     
+sim_gaps                   9     gap probes raised by the simulation (§5.4 step 3) — recommendation_id NULL: not yet wired to new recommendations, noted honestly                 
+sim_outcomes               3     per-scenario summary + top gaps + coverage-by-phase (§5.4 step 4)                                                                                
+sim_scenarios              3     one simulated decision-sequence per profile run (§5.4)                                                                                           
+sim_steps                  9     per-phase simulated technique steps (§5.4 step 1)                                                                                                
+staleness_clocks           8     staleness clocks (§3.1)                                                                                                                          
+sweeps                     6     sweep programs run so far (§3.4)                                                                                                                 
+tactics                    15    ATT&CK Enterprise tactics, full catalog (§3.1 phase 5)                                                                                           
+technique_campaigns        1213  attested campaign usage, full catalog (§3.3 item 4 / A4)                                                                                         
+technique_detcount         706   MITRE detection-strategy/analytic prior-art counts (§3.3 item 7 / A7)                                                                            
+technique_groups           4815  attested group usage, full catalog (§3.3 item 4 / A4)                                                                                            
+technique_platforms        2166  technique<->platform multi-valued facet (§3.3 item 5 / A5)                                                                                       
+technique_revisions        867   per-technique version history, one release so far (§3.3 item 6 / A6)                                                                             
+technique_tactics          1099  technique<->tactic multi-valued facet (§3.3 item 1 / A1)                                                                                         
+techniques                 867   ATT&CK Enterprise techniques, full catalog — store all, map only the selected subset (§5.2)                                                      
+tp_profiles                3     the 3 adversary profiles, mirroring ttp/profiles/*.md (§5.3)                                                                                     
+ttp_mappings               9     this portfolio's mapped subset — selection rubric in ttp/LIBRARY.md (§5.2)                                                                       
