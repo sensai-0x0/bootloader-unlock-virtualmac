@@ -78,9 +78,16 @@ bump while field is serde-defaulted). `spec/contract-spec.md`'s data contract ga
 
 Remaining work when resumed:
 
-1. Populate the field from `collect()` — the `sudo -n bputil -d` outcome already separates
-   measured/unmeasured. Until then `collect()` ships `Unmeasured` (conservative, never
-   overclaiming — see `PostureConfidence`'s doc comment).
+1. ~~Populate the field from `collect()`~~ — **done 2026-11-11/12, landed on main**:
+   `20da5e6` wired `derive_posture_confidence` (`BputilOutcome::{RootReadParsed,
+   RootReadUnparsed, RootReadUnavailable}` → Measured / UntrustedRead / UntrustedRead —
+   a pass with no root read still earns UntrustedRead via the always-direct
+   `csrutil` SSV read; `Unmeasured` stays the deserialisation floor), `6333c5c` made
+   `diff()` compare it, and the live host re-proves it: `evaluate --json` twice differs
+   only in `captured_at`, reporting `posture_confidence: UntrustedRead` +
+   `security_mode: Unknown` without a cached sudo credential, exactly as designed. The
+   coherence rule ("Measured over Unknown mode is rejected, not clamped") is enforced in
+   `validate()`.
 2. ~~Update every `BootState` literal and regenerate the plan goldens **deliberately**~~
    — done this step; goldens confirmed unaffected (`PlannedTransition` has no posture
    field).

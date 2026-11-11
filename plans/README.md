@@ -8,7 +8,7 @@ and what's been deliberately left as an open gap).
 | File | Phase | Who does it |
 |---|---|---|
 | [phase-0.md](phase-0.md) | P0 Foundations — one item done, one open (needs a human's `sudo` password) | Either |
-| [phase-1.md](phase-1.md) | P1 Evaluator — `other_containers` done; IMG4-into-collect wiring still open | Either |
+| [phase-1.md](phase-1.md) | P1 Evaluator — `other_containers` + posture-confidence derivation done; IMG4-into-collect wiring and cross-container posture reads still open | Either |
 | [phase-2.md](phase-2.md) | P2 Planner — golden-file tests done; architecture-doc verification still open | Either |
 | [phase-3.md](phase-3.md) | P3 Executor + Authoriser + Verifier — **not started** | **Human with physical access to a scratch Mac** |
 | [phase-4.md](phase-4.md) | P4 Permissive path + revert + control surface — **not started** | **Human with physical access to a scratch Mac** |
