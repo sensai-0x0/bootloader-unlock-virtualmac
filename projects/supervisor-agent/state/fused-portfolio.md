@@ -6,7 +6,7 @@ database is the single source of truth; this mirror is a view). Never
 edited by hand; a divergence would be a `sync_violations` row and the
 database wins every such fight.
 
-Regenerated: 2026-11-10T22:02:35Z
+Regenerated: 2026-11-11T04:24:20Z
 
 ## Initiatives
 
@@ -74,8 +74,8 @@ Regenerated: 2026-11-10T22:02:35Z
 
 ## Parse health
 
-- parse_failures rows (all-time, first-class history): 0
-- parse_failures today: 0
+- parse_failures rows (all-time, first-class history): 1
+- parse_failures today: 1
 
 ## Sweep ledger (parsed)
 

@@ -322,21 +322,77 @@ FORBIDDEN_RUN_ARTIFACT_PATTERNS = (
     "wrapper.rs",
 )
 
+# §7's phase-5 addition ("self-audit v2"): any sim artifact containing
+# executable code or a payload-shaped blob. Scoped to patterns that
+# shouldn't appear in honest decision-model prose at all — a profile or gap
+# probe describing a technique in English never needs a shebang, an
+# interpreter invocation, or a code-execution builtin.
+EXECUTABLE_CONTENT_PATTERNS = (
+    "#!/",
+    "import subprocess",
+    "import os",
+    "os.system(",
+    "subprocess.run(",
+    "subprocess.Popen(",
+    "eval(",
+    "exec(",
+    "/bin/sh",
+    "/bin/bash",
+    "powershell",
+    "<script",
+)
+
 
 def check_forbidden_patterns() -> list[str]:
     """§7 A4: forbidden-pattern grep over the SUPERVISOR'S OWN analysis output —
-    briefs/ and the decision-log mirror. state/fused-portfolio.md is exempt by
-    construction this phase: it is a verbatim projection of the user's own
-    progress record (its source lines legitimately describe VM-booting SSH/tart
-    steps; the supervisor is quoting history, not proposing actions)."""
+    briefs/, the decision-log mirror, and (phase 5) ttp/'s reviewable text.
+    state/fused-portfolio.md is exempt by construction this phase: it is a
+    verbatim projection of the user's own progress record (its source lines
+    legitimately describe VM-booting SSH/tart steps; the supervisor is
+    quoting history, not proposing actions)."""
     violations = []
     subjects = [*(BASE / "briefs").glob("*.md"),
-                BASE / "state" / "decision-log.md"]
+                BASE / "state" / "decision-log.md",
+                *(BASE / "ttp").glob("*.md"),
+                *(BASE / "ttp").glob("*.yaml"),
+                *(BASE / "ttp" / "profiles").glob("*.md")]
     for path in sorted(subjects):
         text = path.read_text()
         for pattern in FORBIDDEN_RUN_ARTIFACT_PATTERNS:
             if pattern in text:
                 violations.append(f"{path.name}: forbidden pattern {pattern!r}")
+        for pattern in EXECUTABLE_CONTENT_PATTERNS:
+            if pattern in text:
+                violations.append(
+                    f"{path.name}: executable-content pattern {pattern!r} "
+                    "(§7 self-audit v2)")
+    return violations
+
+
+def check_sim_artifacts_executable(conn: sqlite3.Connection) -> list[str]:
+    """§7 self-audit v2 / §8 phase 5 accept criterion (d): no sim artifact
+    (sim_steps.intent/basis, sim_gaps.question, sim_outcomes.summary)
+    contains executable content. These are DB text columns, not files, so
+    they need their own scan — check_forbidden_patterns only reads files."""
+    violations = []
+    rows = (
+        [("sim_steps", r["id"], r["intent"]) for r in
+         conn.execute("SELECT id, intent FROM sim_steps")]
+        + [("sim_steps", r["id"], r["basis"]) for r in
+           conn.execute("SELECT id, basis FROM sim_steps")]
+        + [("sim_gaps", r["id"], r["question"]) for r in
+           conn.execute("SELECT id, question FROM sim_gaps")]
+        + [("sim_outcomes", r["id"], r["summary"]) for r in
+           conn.execute("SELECT id, summary FROM sim_outcomes")]
+    )
+    for table, row_id, text in rows:
+        if not text:
+            continue
+        for pattern in EXECUTABLE_CONTENT_PATTERNS:
+            if pattern in text:
+                violations.append(
+                    f"{table}#{row_id}: executable-content pattern "
+                    f"{pattern!r} (§7 self-audit v2)")
     return violations
 
 
@@ -377,6 +433,7 @@ def run_audit(trigger: str = "manual") -> int:
             violations.append(f"A3 provenance-null rows: {bad}")
 
         violations.extend(check_write_scope())
+        violations.extend(check_sim_artifacts_executable(conn))
         conn.close()
     except sqlite3.Error as exc:
         violations.append(f"database error: {exc}")

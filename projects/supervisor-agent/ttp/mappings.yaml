@@ -1,0 +1,89 @@
+# Technique -> check-surface -> capability mapping — the reviewable input
+# tools/ttp_ingest.py reads to build ttp_mappings rows. BUILD-SPEC §1 file
+# inventory; selection rubric in ttp/LIBRARY.md.
+#
+# Fields per entry:
+#   surface        matches a real staleness_clocks.surface, or a free-text
+#                   surface id for a non-clock surface (documented in
+#                   ttp/LIBRARY.md's selection rubric)
+#   capability     agent_or_skill value from `capabilities`, or null
+#   detect_via     free text naming the mechanism, verbatim where possible
+#   limit_via      free text, or null when nothing limits it today
+#   verdict        covered | partially_covered | uncovered | asserted_unproven
+#                   | not_applicable — never claim 'covered' without evidence_anchor
+#   evidence_anchor
+#                  a LIKE-matchable fragment of a real evidence.source_ref, or
+#                   null. Resolved to evidence_id at ingest time (same pattern
+#                   as tools/parsers.py's seed_clocks anchor resolution). NULL
+#                   forces verdict to 'uncovered'/'not_applicable'/
+#                   'asserted_unproven' at ingest (never 'covered').
+
+T1195.001:
+  - surface: "knowledge:cargo-audit-clean"
+    capability: "vulnres-recon"
+    detect_via: "knowledge:cargo-audit-clean staleness clock + vulnres-recon's dependency-audit pass"
+    limit_via: null
+    verdict: partially_covered
+    evidence_anchor: null
+  - surface: "knowledge:build-test-clean"
+    capability: "vulnres-recon"
+    detect_via: "knowledge:build-test-clean staleness clock + build/test/clippy/fmt re-verification"
+    limit_via: null
+    verdict: partially_covered
+    evidence_anchor: null
+
+T1608.007:
+  - surface: "supervisor-ingestion-path"
+    capability: null
+    detect_via: null
+    limit_via: null
+    verdict: uncovered
+    evidence_anchor: null
+
+T1698:
+  - surface: "supervisor-ingestion-path"
+    capability: null
+    detect_via: null
+    limit_via: null
+    verdict: uncovered
+    evidence_anchor: null
+
+T1699:
+  - surface: "supervisor-ingestion-path"
+    capability: null
+    detect_via: null
+    limit_via: null
+    verdict: not_applicable
+    evidence_anchor: null
+
+T1685.007:
+  - surface: "vulnres-autonomous-capabilities"
+    capability: null
+    detect_via: null
+    limit_via: null
+    verdict: uncovered
+    evidence_anchor: null
+
+T1021.004:
+  - surface: "fleet-enrollments:first-list"
+    capability: null
+    detect_via: null
+    limit_via: null
+    verdict: uncovered
+    evidence_anchor: null
+
+T1078:
+  - surface: "fleet-enrollments:first-list"
+    capability: null
+    detect_via: null
+    limit_via: null
+    verdict: uncovered
+    evidence_anchor: null
+
+T1222:
+  - surface: "vm_sec_research:boot-security-state"
+    capability: null
+    detect_via: "bputil-eval evaluate/verify (P1/P2 proven stable: evaluate run twice differs only in timestamp)"
+    limit_via: null
+    verdict: covered
+    evidence_anchor: "9-2026-11-10"

@@ -715,6 +715,28 @@ here rather than silently resolved in code — every entry cites the phase that 
    corrections above), since an under-tested state-transition rule is
    worse than an honestly-flagged gap. Revisit before any phase that
    depends on `'never'`-clock transitions behaving correctly.
+24. *(phase 5, 2026-11-11)* **The §3.3 item 5 platform filter, applied
+   literally, rejected exactly the techniques §5.2 names as first-class
+   must-model items.** Ingesting the real ATT&CK v20.1 bundle (verified
+   against `mitre/cti`'s actual GitHub release and `attack.mitre.org`'s
+   real update notes before building anything against it — every specific
+   claim in §5.2 checked out) showed T1698/T1699 (prompt injection) and
+   T1685.007 (impair autonomous defenses) tagged platform `SaaS`/`Windows`
+   only, and T1608.007 (AI result poisoning) tagged `PRE` — none intersect
+   `('macOS','Containers','IaaS','Linux')`. MITRE's platform tags reflect
+   *where a technique has been observed*, not where it's theoretically
+   inapplicable — rejecting these on a platform technicality would mean
+   failing to model exactly the agent-directed profile's reason for
+   existing. Two narrow, documented fixes in `tools/ttp_ingest.py`: (a)
+   `PRE` never fails the platform check — it is ATT&CK's own tag for
+   pre-compromise techniques that apply before any specific platform is
+   chosen, not a mismatch; (b) a named exemption set,
+   `PLATFORM_FILTER_EXEMPT_SURFACES = {'supervisor-ingestion-path',
+   'vulnres-autonomous-capabilities'}`, for the two surfaces that are this
+   portfolio's own software/process pipeline, not an OS/infra-targeted
+   surface the platform filter was written to police. Every other surface
+   still goes through the unmodified filter — this is a scoped exemption
+   for two named surfaces, not a loosening of the rule itself.
 
 ---
 
