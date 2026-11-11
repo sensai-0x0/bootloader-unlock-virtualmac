@@ -5,11 +5,12 @@
 
 .invariants-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
   padding: var(--space-2) var(--space-2);
   border-bottom: 1px solid var(--hairline);
-  gap: var(--space-3);
+  gap: var(--space-1) var(--space-3);
 }
 
 .invariants-row dt {

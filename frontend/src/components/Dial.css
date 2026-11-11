@@ -1,6 +1,7 @@
 .dial {
   display: flex;
-  gap: var(--space-5);
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
   margin-bottom: var(--space-6);
   font-size: var(--text-label);
   letter-spacing: 0.02em;

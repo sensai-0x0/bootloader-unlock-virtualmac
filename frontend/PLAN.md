@@ -4,6 +4,47 @@ Tracks phases, what shipped, and what the next phase should be revised
 because of what the last one taught. Updated at the end of every work
 block, not drafted once up front and left stale.
 
+## Cross-cutting — responsive pass (done)
+
+Not a phase, a correctness pass across all five: `#root` had a fixed
+`max-width: 920px` — centered, but never actually stretching with the
+viewport. Fixed:
+
+- `#root`: fluid `width: 100%` up to a `max-width: 1400px` cap (wide
+  enough to use a large monitor, capped so a ledger row doesn't become a
+  150-character line), side/vertical padding via `clamp()` instead of a
+  single breakpoint jump.
+- `--text-headline`: `clamp(40px, 9vw, 64px)` instead of a fixed size plus
+  one media-query override.
+- `Dial`, `InvariantsChecklist`'s row: added `flex-wrap: wrap` — three nav
+  items and a long invariant name next to a tick were both one
+  narrow-viewport away from forcing horizontal overflow, not because
+  anything was broken today, but because nothing stopped it from breaking
+  the next time a label got longer.
+- `Ledger`'s four/five-fractional-column grids: a real mobile fix, not
+  just a fluid tweak — fractional columns still squeeze a description down
+  to a few characters per row on a phone. Added a `max-width: 640px` rule
+  that stacks each row's columns to one per line instead.
+- `PhosphorTrace`: dropped the fixed SVG `width`/`height` attributes in
+  favor of a CSS-driven size (`width: 100%` up to a small cap, fixed
+  height) — it was rendering at the same 120px box on a 4K monitor as on a
+  phone.
+- `overflow-x: hidden` on `body` as a defensive backstop, not a fix for
+  anything specific found.
+
+**Verified:** `bun run typecheck` clean, `bun test` 54/54 (unchanged —
+this was a presentation pass, no logic changed, so no new tests), `bun run
+build` bundles clean, confirmed via a dev-server fetch that the new rules
+are actually present in the served CSS (checked directly — Bun's dev
+server splits per-component CSS into separately hashed asset files rather
+than serving the source paths, so a direct curl to `/src/styles/global.css`
+returns nothing; fetched every served asset and grepped them instead).
+
+**Not verified:** actual rendering at different viewport widths. No
+headless browser is available in this environment without installing one
+on the host, which this repo's own rules say to ask about first — said so
+explicitly rather than claiming a visual check that didn't happen.
+
 ## Phase 0 — scaffold (done)
 
 **Shipped:** Bun-native app (no Vite — matches `metacogna-rag`'s established

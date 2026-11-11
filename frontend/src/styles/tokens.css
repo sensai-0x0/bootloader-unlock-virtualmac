@@ -33,7 +33,7 @@
   --font-structural: "Big Shoulders", "Arial Narrow", sans-serif;
   --font-data: "Fragment Mono", "SF Mono", monospace;
 
-  --text-headline: 64px;
+  --text-headline: clamp(40px, 9vw, 64px);
   --text-section: 20px;
   --text-label: 14px;
   --text-data: 14px;
