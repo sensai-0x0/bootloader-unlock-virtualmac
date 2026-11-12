@@ -87,7 +87,7 @@ list
 every sha384 is 96 lowercase hex chars; a CustomBootObject has signer == SEPLocalPolicy
 other_containers[]
 list
-disjoint volume_group_uuid from target_container
+disjoint volume_group_uuid from target_container; per entry, posture_confidence follows the same rule as the target's (claiming Measured over an Unknown mode is rejected — deserialisation of pre-field entries defaults to Unmeasured)
 evidence.raw_outputs[]
 list
 each entry has a command, an exit code and a stdout_sha256

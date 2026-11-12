@@ -105,6 +105,12 @@ pub struct TargetContainer {
 pub struct OtherContainer {
     pub volume_group_uuid: String,
     pub security_mode: SecurityMode,
+    /// Same semantics as [`BootState::posture_confidence`], per container: how the
+    /// container's own policy read (or absence of one — see `state/collect.rs`'s
+    /// per-container derivation) maps to trust. Defaults to `Unmeasured` on
+    /// deserialisation of baselines predating the field, never upgrading a stale claim.
+    #[serde(default = "default_posture_confidence")]
+    pub posture_confidence: PostureConfidence,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -251,6 +257,13 @@ pub fn validate(state: &BootState) -> Result<(), BootStateError> {
                 other.volume_group_uuid.clone(),
             ));
         }
+        // Same coherence rule per container: a Measured claim over an Unknown
+        // container mode is a self-contradictory reading, not a clamp.
+        if other.posture_confidence == PostureConfidence::Measured
+            && other.security_mode == SecurityMode::Unknown
+        {
+            return Err(BootStateError::MeasuredPostureWithUnknownMode);
+        }
     }
 
     Ok(())
@@ -282,6 +295,7 @@ mod tests {
             other_containers: vec![OtherContainer {
                 volume_group_uuid: "BBBB-OTHER".to_string(),
                 security_mode: SecurityMode::Full,
+                posture_confidence: PostureConfidence::Unmeasured,
             }],
             evidence: Evidence::default(),
         }
@@ -356,9 +370,37 @@ mod tests {
             Err(BootStateError::MeasuredPostureWithUnknownMode)
         );
         // The same Unknown mode with an honest lesser confidence is fine — degradation
-        // itself is not an error (宇 contract-spec's Unknown-under-MacOs allowance).
+        // itself is not an error (contract-spec's Unknown-under-MacOs allowance).
         s.posture_confidence = PostureConfidence::UntrustedRead;
         assert!(validate(&s).is_ok());
+    }
+
+    #[test]
+    fn measured_other_container_over_unknown_mode_is_rejected_too() {
+        // The coherence rule is per container, not only for the target: an
+        // other_containers entry claiming Measured over an Unknown mode is the same
+        // self-contradiction, in the same place the SingleContainerTouched invariant
+        // will later consume these entries.
+        let mut s = valid_full_state();
+        s.other_containers[0].security_mode = SecurityMode::Unknown;
+        s.other_containers[0].posture_confidence = PostureConfidence::Measured;
+        assert_eq!(
+            validate(&s),
+            Err(BootStateError::MeasuredPostureWithUnknownMode)
+        );
+        s.other_containers[0].posture_confidence = PostureConfidence::UntrustedRead;
+        assert!(validate(&s).is_ok());
+    }
+
+    #[test]
+    fn legacy_other_containers_without_posture_confidence_deserialise_as_unmeasured() {
+        let legacy = serde_json::json!({
+            "volume_group_uuid": "BBBB-OTHER",
+            "security_mode": "Full"
+        });
+        let parsed: OtherContainer =
+            serde_json::from_value(legacy).expect("legacy other-container entry parses");
+        assert_eq!(parsed.posture_confidence, PostureConfidence::Unmeasured);
     }
 
     #[test]

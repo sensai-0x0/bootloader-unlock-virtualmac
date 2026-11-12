@@ -92,6 +92,15 @@ Remaining work when resumed:
    — done this step; goldens confirmed unaffected (`PlannedTransition` has no posture
    field).
 3. ~~Update `spec/contract-spec.md`'s data-contract section~~ — done this step.
-4. Cross-container posture fields (rank 1's second half) come only after that: real
-   `bputil -d -v <uuid>` reads stay gated on the same non-interactive-sudo rule as the
-   target container's own read.
+4. ~~Cross-container posture fields (rank 1's second half)~~ — **done 2026-11-12**
+   (`feat/other-container-posture`): `OtherContainer` gained `posture_confidence`
+   (same serde default honesty), `collect()` attempts one non-interactive
+   `sudo -n bputil -d -v <uuid>` per other container with the same
+   fresh-derivation mapping as the target read (`other_container_posture` — measured
+   only from that call's own outcome; failures degrade to `Unknown` + `UntrustedRead`
+   via the pass's always-present direct `csrutil` signal), successes recorded into
+   `evidence.raw_outputs`, and `validate()` now enforces the Measured/Unknown coherence
+   rule per container. The earlier "multiply the sudo gamble" objection is superseded
+   in `extract_other_container_uuids`'s replacement docs. This single-VG host
+   exercises the empty branch live (`other_containers: []`, twice-run gate holds); the
+   populated branch is unit-covered.
