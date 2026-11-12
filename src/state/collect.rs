@@ -124,7 +124,28 @@ pub fn collect() -> Result<BootState, CollectError> {
     // same reasoning as this module's doc comment) — host-identification-shaped, so
     // audited via the wrapper but not persisted into evidence.raw_outputs.
     let list_vg_record = wrapper::run(&["diskutil", "apfs", "listVolumeGroups"])?;
-    let other_containers = extract_other_containers(&list_vg_record.stdout, &volume_group_uuid);
+    let other_uuids = extract_other_container_uuids(&list_vg_record.stdout, &volume_group_uuid);
+
+    // Cross-container posture reads (phase-1.md item 4, evaluator "Build next" rank 1's
+    // second half): one non-interactive `bputil -d -v <uuid>` per other container —
+    // instant fail without a cached sudo credential, never a prompt (same rule as the
+    // target container's own read). Failures degrade to Unknown + the honest confidence
+    // mapping; successes are recorded into evidence.raw_outputs like every other
+    // security-relevant read.
+    let mut other_containers = Vec::with_capacity(other_uuids.len());
+    for uuid in other_uuids {
+        let policy_record = wrapper::run(&["sudo", "-n", "bputil", "-d", "-v", &uuid]);
+        let (security_mode, posture_confidence) =
+            other_container_posture(policy_record.as_ref().ok());
+        if let Ok(r) = &policy_record {
+            record(&mut raw_outputs, r);
+        }
+        other_containers.push(OtherContainer {
+            volume_group_uuid: uuid,
+            security_mode,
+            posture_confidence,
+        });
+    }
 
     // Security-relevant reads: recorded into evidence.raw_outputs.
     let ssv_record = wrapper::run(&["csrutil", "authenticated-root", "status"])?;
@@ -240,17 +261,9 @@ fn extract_volume_group(diskutil_output: &str) -> Option<String> {
 }
 
 /// Every `Volume Group <uuid>` line from `diskutil apfs listVolumeGroups`, excluding the
-/// target container's own group. `security_mode` for each is always `Unknown`: reading
-/// another container's policy needs `bputil -d -v <that-uuid>` under `sudo`, which this
-/// module already avoids prompting for even for the *target* container (see module doc) —
-/// doing it per other-container would multiply that same non-interactive-sudo gamble with no
-/// way to batch it, for a field (`spec/contract-spec.md`'s `OtherContainer.security_mode`)
-/// that only exists so `verify`'s `SingleContainerTouched` invariant (P3) has something to
-/// diff — it doesn't need to be populated with real policy data until that's wired up.
-fn extract_other_containers(
-    list_volume_groups_output: &str,
-    target_vg: &str,
-) -> Vec<OtherContainer> {
+/// target container's own group. Returns bare UUIDs; each container's policy read happens
+/// separately in `collect()` (see it for why that is now attempted, and how it degrades).
+fn extract_other_container_uuids(list_volume_groups_output: &str, target_vg: &str) -> Vec<String> {
     list_volume_groups_output
         .lines()
         .filter_map(|line| {
@@ -260,11 +273,35 @@ fn extract_other_containers(
             Some(uuid.to_string())
         })
         .filter(|uuid| uuid != target_vg)
-        .map(|volume_group_uuid| OtherContainer {
-            volume_group_uuid,
-            security_mode: SecurityMode::Unknown,
-        })
         .collect()
+}
+
+/// One other container's policy read, mapped to its (`security_mode`,
+/// `posture_confidence`) pair — the *same* fresh derivation discipline the target
+/// container uses (see `derive_posture_confidence`): measured only from this call's own
+/// outcome, degraded honestly otherwise.
+///
+/// Reads are attempted per phase-1.md item 4 (evaluator "Build next" rank 1's second
+/// half) — real `sudo -n bputil -d -v <uuid>` reads, which either succeed with a cached
+/// sudo credential or fail immediately without prompting. The earlier rationale against
+/// attempting them ("multiply the sudo gamble with no way to batch") is superseded: the
+/// `OtherContainer` schema now carries a `posture_confidence` field, so a refused read
+/// degrades to `Unknown` + `UntrustedRead`/`NoRootRead` mapping instead of a silent
+/// placeholder `Unknown` that a consumer cannot distinguish from a measured reading.
+fn other_container_posture(record: Option<&CommandRecord>) -> (SecurityMode, PostureConfidence) {
+    let outcome = match record {
+        Some(r) if r.exit_code == 0 => BputilOutcome::RootReadParsed,
+        Some(_) => BputilOutcome::RootReadUnparsed,
+        None => BputilOutcome::NoRootRead,
+    };
+    let security_mode = match record {
+        Some(r) if r.exit_code == 0 => parse_security_mode(&r.stdout),
+        _ => SecurityMode::Unknown,
+    };
+    (
+        security_mode,
+        derive_posture_confidence(outcome, security_mode),
+    )
 }
 
 /// `Authenticated Root status: enabled` from `csrutil authenticated-root status` →
@@ -392,18 +429,17 @@ mod tests {
     #[test]
     fn excludes_the_target_volume_group_and_parses_others() {
         // Hand-built, clearly not a real capture (see filename) — this dev machine only has
-        // one real volume group, so the exclusion branch of extract_other_containers has
-        // nothing real to exercise it. Structure matches
+        // one real volume group, so the exclusion branch of extract_other_container_uuids
+        // has nothing real to exercise it. Structure matches
         // diskutil_apfs_listVolumeGroups_REDACTED.txt's real format.
         let synthetic =
             include_str!("../../tests/fixtures/diskutil_apfs_listVolumeGroups_SYNTHETIC_multi.txt");
-        let others = extract_other_containers(synthetic, "22222222-2222-2222-2222-222222222222");
-        assert_eq!(others.len(), 1);
+        let others =
+            extract_other_container_uuids(synthetic, "22222222-2222-2222-2222-222222222222");
         assert_eq!(
-            others[0].volume_group_uuid,
-            "44444444-4444-4444-4444-444444444444"
+            others,
+            vec!["44444444-4444-4444-4444-444444444444".to_string()]
         );
-        assert_eq!(others[0].security_mode, SecurityMode::Unknown);
     }
 
     #[test]
@@ -412,13 +448,23 @@ mod tests {
             include_str!("../../tests/fixtures/diskutil_apfs_listVolumeGroups_REDACTED.txt");
         // Redaction zeroed every UUID, including the one real volume group — so with that
         // same zeroed UUID as the target, nothing "other" should be found.
-        let others = extract_other_containers(fixture, "00000000-0000-0000-0000-000000000000");
+        let others = extract_other_container_uuids(fixture, "00000000-0000-0000-0000-000000000000");
         assert!(others.is_empty());
     }
 
     #[test]
     fn no_volume_group_lines_yields_empty() {
-        assert!(extract_other_containers("nothing relevant here", "any-uuid").is_empty());
+        assert!(extract_other_container_uuids("nothing relevant here", "any-uuid").is_empty());
+    }
+
+    #[test]
+    fn other_container_posture_degrades_honestly_on_no_read() {
+        // The per-container derivation must mirror the target's: no record → no claim of
+        // measurement, and Unknown mode + UntrustedRead (the csrutil SSV signal from this
+        // same pass keeps it above Unmeasured — see derive_posture_confidence's doc).
+        let (mode, confidence) = other_container_posture(None);
+        assert_eq!(mode, SecurityMode::Unknown);
+        assert_eq!(confidence, PostureConfidence::UntrustedRead);
     }
 
     #[test]
