@@ -1,3 +1,26 @@
+🐜🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧🐜
+
+```
++---------------------------------------+
+|                                       |
+| ##### #   # #####    ###  #   # ##### |
+|   #   #   # #       #   # ##  #   #   |
+|   #   ##### #####   ##### # # #   #   |
+|   #   #   # #       #   # #  ##   #   |
+|   #   #   # #####   #   # #   #   #   |
+|                                       |
+|    ,   ,                              |
+|   (\___/)                             |
+|    (o.o)                              |
+|   __|_|__                             |
+|  /_______\                            |
+|     | |                               |
+|                                       |
++---------------------------------------+
+```
+
+🐜🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🐜
+
 # 🐜 the-ant-experiment
 
 A custom toolchain that **measures and changes an Apple Silicon Mac's boot-security mode** — safely, honestly, and only through Apple's own gates. 🕵️ An OS Vulnerability Researcher agent suite (`vuln_res/`) rides alongside it, hunting bugs in this toolchain's own code — never in Apple's platform.
