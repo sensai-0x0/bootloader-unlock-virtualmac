@@ -1,0 +1,74 @@
+.phase-grid {
+  border-top: 1px solid var(--hairline);
+}
+
+.phase-grid-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.6fr) repeat(5, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.phase-grid-header {
+  font-size: var(--text-micro);
+  color: var(--paper-white-dim);
+}
+
+.phase-grid-phase-label {
+  text-align: center;
+}
+
+.phase-grid-initiative {
+  font-family: var(--font-data);
+  font-size: var(--text-data);
+  color: var(--paper-white-dim);
+}
+
+.phase-grid-cell {
+  display: flex;
+  justify-content: center;
+}
+
+/* The grid IS the information — a row read left to right is one
+   initiative's recon/build/execute/triage-learn/persist-report coverage,
+   dot color is the state, exact words live behind the loupe (components
+   already established for "compact visual, full precision on demand"). */
+
+.phase-dot {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+}
+
+.phase-dot[data-state="green"] {
+  background: var(--signal-green);
+}
+
+.phase-dot[data-state="in-progress"] {
+  background: transparent;
+  border: 1px solid var(--signal-green-dim);
+}
+
+.phase-dot[data-state="stale"] {
+  background: transparent;
+  border: 1px solid var(--paper-white-dim);
+}
+
+/* blocked is the one state that actually needs a human to look —
+   the same amber reserved everywhere else for exactly that. */
+.phase-dot[data-state="blocked"] {
+  background: var(--amber-flag);
+}
+
+.phase-dot[data-state="never-run"] {
+  background: var(--hairline-strong);
+}
+
+@media (max-width: 640px) {
+  .phase-grid-row {
+    grid-template-columns: minmax(70px, 1fr) repeat(5, 1fr);
+    gap: var(--space-1);
+  }
+}

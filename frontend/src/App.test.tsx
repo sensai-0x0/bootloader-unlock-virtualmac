@@ -30,4 +30,22 @@ describe("App", () => {
     expect(getByText("target container posture")).toBeDefined();
     expect(window.location.pathname).toBe("/posture");
   });
+
+  test("the dial switches to the sessions view", () => {
+    const { getByText } = render(<App />);
+
+    fireEvent.click(getByText("sessions"));
+
+    expect(getByText("sessions active or idle right now")).toBeDefined();
+    expect(window.location.pathname).toBe("/sessions");
+  });
+
+  test("the dial switches to the portfolio view", () => {
+    const { getByText } = render(<App />);
+
+    fireEvent.click(getByText("portfolio"));
+
+    expect(getByText("dispatch tickets pending approval")).toBeDefined();
+    expect(window.location.pathname).toBe("/portfolio");
+  });
 });

@@ -1,0 +1,44 @@
+.session-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.session-status .tick {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+}
+
+/* active/idle are both "currently alive," so they share the green hue —
+   filled for genuinely in-flight, outline for alive-but-quiet.
+   disconnected/closed both get the neutral dash: "not live right now,"
+   not an escalation. Amber stays reserved for a human-needed state, which
+   neither disconnect (self-heals within its grace window) nor closed
+   (a normal end state) actually is. */
+
+.session-status[data-status="active"] .tick {
+  background: var(--signal-green);
+}
+.session-status[data-status="active"] {
+  color: var(--signal-green);
+}
+
+.session-status[data-status="idle"] .tick {
+  background: transparent;
+  border: 1px solid var(--signal-green-dim);
+}
+.session-status[data-status="idle"] {
+  color: var(--signal-green-muted);
+}
+
+.session-status[data-status="disconnected"] .tick,
+.session-status[data-status="closed"] .tick {
+  background: var(--paper-white-dim);
+  height: 1px;
+  margin-top: 3px;
+}
+.session-status[data-status="disconnected"],
+.session-status[data-status="closed"] {
+  color: var(--paper-white-dim);
+}

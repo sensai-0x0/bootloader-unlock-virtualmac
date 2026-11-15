@@ -1,5 +1,8 @@
 .phosphor-trace {
   display: block;
+  width: 100%;
+  max-width: 220px;
+  height: 20px;
   margin-top: var(--space-2);
   overflow: visible;
 }
