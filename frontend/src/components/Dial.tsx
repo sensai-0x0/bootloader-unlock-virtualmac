@@ -5,6 +5,8 @@ const POSITIONS = [
   { path: "/", label: "sweep & findings" },
   { path: "/campaign", label: "campaign overview" },
   { path: "/posture", label: "posture" },
+  { path: "/sessions", label: "sessions" },
+  { path: "/portfolio", label: "portfolio" },
 ];
 
 /**

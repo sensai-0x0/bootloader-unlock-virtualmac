@@ -4,6 +4,93 @@ Tracks phases, what shipped, and what the next phase should be revised
 because of what the last one taught. Updated at the end of every work
 block, not drafted once up front and left stale.
 
+## Phase 6 — gap analysis + two new domains (done)
+
+**The analysis.** Compared this dashboard's coverage against what the
+rest of the repo actually does, not just what `../design/FEATURE-PLAN.md`
+already scoped. Two research passes (`projects/supervisor-agent/`,
+`projects/04-agentic-serving-layer/`) turned up two real, implemented (not
+proposal-only) domains with zero dashboard presence:
+
+- **`projects/04-agentic-serving-layer/`** — persistent agent sessions
+  over HTTP + WebSocket, two tracks (`bootloader`, `vuln-research`), a real
+  state machine (`active → idle → disconnected → closed`, with a
+  reconnect-within-grace path back to `idle`), and a live event stream
+  (`assistant_delta | tool_use | tool_result | interrupt_ack | error |
+  session_closed`). This is the one place in the whole repo with a
+  *literally* live, monitorable workflow rather than a point-in-time
+  snapshot — directly what "accommodate monitored workflows" asked for.
+- **`projects/supervisor-agent/`** — a real SQLite-backed decision layer
+  (`state/portfolio.db`, two real generated briefs) fusing every
+  initiative's state into ranked recommendations and dispatch tickets with
+  their own `pending → approved/rejected` lifecycle, plus a phase-coverage
+  grid (6 initiatives × 5 phases) that changes over time. A second genuine
+  workflow, distinct from sessions — this one is about *what the humans
+  running this whole research program should do next*, not about one
+  running conversation.
+
+(Also surveyed and deliberately left out: the ATT&CK/TTP coverage layer —
+867 techniques is not a "clever layout," it's a dataset that needs its own
+aggregation design before it belongs on a dashboard at this density.
+Projects 1–3 (`fuzz-bug-hunter`, `mutation-engine`, `drift-watch`) are
+proposal-only with no real data on disk — nothing to show yet.)
+
+**The decision on clutter.** Both are genuinely new domains, not
+extensions of `BootState` or vuln_res findings, so each got exactly one
+new dial position (`/sessions`, `/portfolio`) — five total now — rather
+than being grafted onto an existing view where they'd read as unrelated
+noise. Everything *within* each new view reuses existing components
+(`Ledger`/`LedgerRow`, `StatusTick` via two new label-mapping functions,
+`Loupe`) rather than inventing new visual language, except one: a
+`PhaseCoverageGrid` dot-matrix for the 6×5 coverage data, because a real
+table at that density would have been the actual clutter.
+
+**Shipped:** `SessionsView` (read-only — see below), `PortfolioView`,
+`SessionStatusTick`, `EventTimeline`, `PhaseCoverageGrid`,
+`lib/approvalClass.ts` (`approvalClassVisual`/`dispatchStatusVisual`),
+`lib/formatEventTime.ts`, sample data shaped to each project's real schema
+(`sampleSessions.ts`, `samplePortfolio.ts`). `design/FEATURE-PLAN.md`
+extended with both new surfaces, keeping the "spec documents reflect what's
+built" discipline this project has had since Phase 0.
+
+**Judgment — one real bug caught by a test, not by inspection:** the first
+draft of `approvalClassVisual` mapped `user_gated` onto `StatusTick`'s
+`"fixed"` status to get a muted/neutral tick color. `StatusTick` stamps
+`"fixed"` and `"disclosed-upstream"` with a hardcoded `StampMark` graphic
+that the `label` override does *not* suppress — so every `user_gated` tag
+anywhere in the portfolio view would have shown a stray "FIXED" stamp next
+to text that has nothing to do with anything being fixed. Caught this
+while writing the mapping, not after rendering it; added a test
+(`approvalClass.test.ts`'s "never returns a stamping status") that asserts
+the invariant directly, so a future tier added to either mapper can't
+reintroduce the same mistake silently.
+
+**Deliberately deferred, not forgotten — the interrupt control.**
+`projects/04-agentic-serving-layer/`'s `POST /sessions/{id}/interrupt` is
+safe to expose (it cancels an in-flight LLM turn, not a device mutation —
+confirmed by the research pass, not assumed). But it would be the first
+non-read-only affordance this entire app has ever needed, and
+`frontend/CLAUDE.md` currently states "no `<button>`, ever, on this
+surface" as an unqualified rule. Adding a real control here would mean
+either quietly violating that documented rule or quietly narrowing its
+stated scope — neither should happen as a side effect of a monitoring
+feature pass. `SessionsView` stays pure monitoring: status, lifecycle
+times, event timeline, no action. If/when interrupt is wanted, that's a
+deliberate decision about what "no buttons" actually means in this app,
+made on its own, not folded in here.
+
+**Verified:** `bun run typecheck` clean, `bun test` — 70/70 pass (16 new),
+`bun run build` bundles clean (14.58 KB CSS, up from 11.28 KB — two new
+views plus one new dot-matrix component), both new routes smoke-tested via
+curl.
+
+**Not wired to real data**, same as everything else in this app: no HTTP
+call to the serving layer (it isn't running here, and wiring it means
+handling its bearer-token auth — a separate decision), no read of the real
+`state/portfolio.db` (supervisor-agent has no HTTP API at all; it's a CLI
++ SQLite file, so "wiring" it would mean building a new backend endpoint
+that doesn't exist yet, not just a frontend fetch call).
+
 ## Cross-cutting — responsive pass (done)
 
 Not a phase, a correctness pass across all five: `#root` had a fixed

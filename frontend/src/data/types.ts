@@ -148,3 +148,88 @@ export interface Report {
   exitCode: number;
   evidenceBundlePath: string;
 }
+
+/**
+ * projects/04-agentic-serving-layer/ — persistent multi-turn agent sessions
+ * over bootloader/vuln-research tools, reachable over HTTP + WebSocket.
+ * The one genuinely live/monitorable workflow in this app; everything
+ * above this is a point-in-time snapshot.
+ */
+export type SessionTrack = "bootloader" | "vuln-research";
+export type SessionStatus = "active" | "idle" | "disconnected" | "closed";
+export type SessionEventType =
+  | "assistant_delta"
+  | "tool_use"
+  | "tool_result"
+  | "interrupt_ack"
+  | "error"
+  | "session_closed";
+
+export interface SessionEvent {
+  type: SessionEventType;
+  ts: string;
+  /** A human synopsis, not the raw frame payload — a ledger, not a debug console. */
+  summary: string;
+}
+
+export interface AgentSession {
+  id: string;
+  track: SessionTrack;
+  workspacePath: string;
+  status: SessionStatus;
+  createdAt: string;
+  lastActivityAt: string;
+  events: SessionEvent[];
+}
+
+/**
+ * projects/supervisor-agent/ — fuses state across the whole research
+ * portfolio into ranked "do next" recommendations and dispatch tickets.
+ * Never executes anything itself; every dispatch stays gated behind a
+ * human decision.
+ */
+export type InitiativeKind =
+  | "project1_fuzz"
+  | "project2_mutation"
+  | "project3_drift"
+  | "vulnres_suite"
+  | "supervisor"
+  | "vm_sec_research";
+
+export type InitiativeStatus = "pre-build" | "active" | "blocked" | "concluded";
+
+export type PhaseName = "recon" | "build" | "execute" | "triage-learn" | "persist-report";
+export type PhaseState = "green" | "stale" | "blocked" | "in-progress" | "never-run";
+
+export interface Initiative {
+  id: string;
+  name: string;
+  kind: InitiativeKind;
+  status: InitiativeStatus;
+  phases: Record<PhaseName, PhaseState>;
+}
+
+export interface Recommendation {
+  rank: number;
+  initiativeId: string;
+  scoreTotal: number;
+  scoreStaleness: number;
+  scoreBlast: number;
+  scoreReadiness: number;
+  scorePrecedent: number;
+  requiredGate: ApprovalClass;
+}
+
+export type ApprovalClass = "autonomous" | "user_gated" | "gated_plus_1tr";
+export type DispatchApprovalStatus = "pending" | "approved" | "rejected";
+
+export interface DispatchTicket {
+  id: string;
+  initiativeId: string;
+  scopeInvariants: string;
+  requiredGate: ApprovalClass;
+  approvalStatus: DispatchApprovalStatus;
+  approvedBy?: string;
+  approvedAt?: string;
+  executedAt?: string;
+}

@@ -6,12 +6,47 @@ own evaluator/control surface, grounded in `spec/contract-spec.md`'s exact
 field and operation contracts. It is a plan only — no new views are built
 here, no wiring to real data.
 
-## The two contract surfaces
+## The four contract surfaces
 
 | Surface | Source of truth | Covered today |
 |---|---|---|
-| vuln_res/ sweep & findings | `vuln_res/sweep-reports/TEMPLATE-finding.md`, `findings-index.md` | `view-1-sweep-findings.html`, `view-2-campaign-overview.html` |
-| bputil-eval evaluator/control | `spec/contract-spec.md` — `BootState`, `PlannedTransition`, `Report` | Not yet designed — this plan |
+| vuln_res/ sweep & findings | `vuln_res/sweep-reports/TEMPLATE-finding.md`, `findings-index.md` | `view-1-sweep-findings.html`, `view-2-campaign-overview.html`, `frontend/src/views/SweepFindingsView.tsx`, `CampaignOverviewView.tsx` |
+| bputil-eval evaluator/control | `spec/contract-spec.md` — `BootState`, `PlannedTransition`, `Report` | `frontend/src/views/PostureView.tsx` |
+| agentic serving layer (live sessions) | `projects/04-agentic-serving-layer/app/sessions/models.py`, `app/api/ws.py` | `frontend/src/views/SessionsView.tsx` |
+| supervisor-agent (portfolio decisions) | `projects/supervisor-agent/db/schema.sql`, `db/queries/q-scoring.sql` | `frontend/src/views/PortfolioView.tsx` |
+
+### Sessions and Portfolio — added without a new dial-position-per-feature
+
+Two more domains surfaced once the dashboard was compared against the rest
+of the repo's real functionality: `projects/04-agentic-serving-layer/`
+(persistent, multi-turn agent sessions over the bootloader/vuln-research
+tracks, reachable over HTTP + WebSocket) and `projects/supervisor-agent/`
+(a cross-portfolio decision layer: ranked "do next" recommendations,
+phase-coverage per initiative, a dispatch-ticket approval lifecycle).
+Both are genuinely new domains — not an extension of `BootState` or
+vuln_res findings — so each got exactly one new dial position
+(`/sessions`, `/portfolio`) rather than being squeezed into an existing
+view where they'd read as unrelated clutter.
+
+**Sessions** is the one place this app shows something *monitorable* in
+the literal sense: a `Session`'s `status` (`active | idle | disconnected |
+closed`) and its event stream (`assistant_delta | tool_use | tool_result |
+interrupt_ack | error | session_closed`) are live, not a frozen snapshot
+like a `BootState` capture. The view stays read-only monitoring only — no
+interrupt control, even though the serving layer's interrupt endpoint is
+itself safe (it cancels an in-flight LLM turn, not a device mutation).
+Deferred deliberately: it would be the first non-read-only affordance this
+app has ever needed, and `frontend/CLAUDE.md`'s "no buttons, ever" rule
+deserves its own revision, not a quiet exception squeezed in during an
+unrelated feature pass.
+
+**Portfolio** reuses `StatusTick`'s visual grammar twice more
+(`approvalClassVisual`, `dispatchStatusVisual` in `frontend/src/lib/`) and
+adds one new component, `PhaseCoverageGrid` — a compact dot-matrix (one
+dot per initiative × phase, state behind a `Loupe` on hover/focus) rather
+than a 6-row × 5-column text table, keeping the same "low density, full
+precision on demand" discipline as the enrolled-object hashes in
+`PostureView`.
 
 ## The governing principle: "no buttons" is the contract, not just the aesthetic
 
