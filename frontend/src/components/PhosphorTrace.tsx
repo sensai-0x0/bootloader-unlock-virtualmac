@@ -17,8 +17,7 @@ export function PhosphorTrace({ values, label }: { values: readonly number[]; la
     <svg
       className="phosphor-trace"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      width={WIDTH}
-      height={HEIGHT}
+      preserveAspectRatio="none"
       role="img"
       aria-label={label}
     >

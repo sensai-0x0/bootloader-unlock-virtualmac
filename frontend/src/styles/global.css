@@ -10,12 +10,24 @@ body {
   color: var(--paper-white-dim);
   font-family: var(--font-structural);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
+/*
+  Fluid, not fixed: #root stretches with the viewport up to a cap wide
+  enough that a 4K monitor doesn't just show a narrow column in a sea of
+  background, but not so wide that ledger rows turn into unreadable
+  100+ character lines. Side padding scales with the viewport too, rather
+  than jumping at a single breakpoint.
+*/
 #root {
-  max-width: 920px;
+  max-width: 1400px;
+  width: 100%;
   margin-inline: auto;
-  padding: var(--space-6) var(--space-4) var(--space-6);
+  padding-left: clamp(16px, 4vw, 56px);
+  padding-right: clamp(16px, 4vw, 56px);
+  padding-top: clamp(28px, 6vw, 56px);
+  padding-bottom: clamp(28px, 6vw, 56px);
 }
 
 a {
@@ -50,11 +62,3 @@ a {
   margin-top: 0;
 }
 
-@media (max-width: 560px) {
-  #root {
-    padding: var(--space-4) var(--space-3) var(--space-5);
-  }
-  :root {
-    --text-headline: 44px;
-  }
-}
